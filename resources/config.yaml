@@ -1,6 +1,7 @@
 entries:
   - source: /dogu
     target: /var/www/html/warp/menu.json
+    type: warp
   - source: /services
     target: /etc/nginx/conf.d/app.conf
     type: service
