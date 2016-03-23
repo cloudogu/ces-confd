@@ -1,0 +1,7 @@
+entries:
+  - source: /dogu
+    target: /var/www/html/warp/menu.json
+  - source: /services
+    target: /etc/nginx/conf.d/app.conf
+    type: service
+    template: /etc/ces-confd/templates/nginx.app.tpl
