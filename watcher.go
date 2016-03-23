@@ -16,7 +16,6 @@ func CreateWatcher(kapi client.KeysAPI, entry Entry) Watcher {
 	watcher := Watcher{
 		kapi:  kapi,
 		entry: entry,
-		key:   entry.Source,
 	}
 
 	switch entry.Type {
@@ -38,21 +37,24 @@ func CreateWatcher(kapi client.KeysAPI, entry Entry) Watcher {
 // Watcher watches etcd and writes configuration files
 type Watcher struct {
 	kapi   client.KeysAPI
-	key    string
 	entry  Entry
 	reader DataReader
 	writer DataWriter
 }
 
-func (w *Watcher) post() error {
-	log.Println("execute post command", w.entry.PostCommand)
-	cmd := exec.Command(w.entry.PostCommand)
+func execute(command string) error {
+	cmd := exec.Command("/bin/sh", "-c", command)
 	err := cmd.Start()
 	if err != nil {
 		return err
 	}
 
 	return cmd.Wait()
+}
+
+func (w *Watcher) post() error {
+	log.Println("execute post command", w.entry.PostCommand)
+	return execute(w.entry.PostCommand)
 }
 
 func (w *Watcher) preCheck(data interface{}) error {
@@ -71,13 +73,7 @@ func (w *Watcher) preCheck(data interface{}) error {
 	}
 
 	log.Println("execute pre command", w.entry.PreCommand)
-	cmd := exec.Command(w.entry.PreCommand)
-	err = cmd.Start()
-	if err != nil {
-		return err
-	}
-
-	return cmd.Wait()
+	return execute(w.entry.PreCommand)
 }
 
 func (w *Watcher) write(data interface{}) error {
@@ -100,7 +96,7 @@ func (w *Watcher) write(data interface{}) error {
 }
 
 func (w *Watcher) run() {
-	data, err := w.reader(w.kapi, w.key)
+	data, err := w.reader(w.kapi, w.entry.Source)
 	if err != nil {
 		log.Println("Error durring read", err)
 	} else {
@@ -115,7 +111,7 @@ func (w *Watcher) run() {
 func (w *Watcher) Watch() {
 	w.run()
 	watcherOpts := client.WatcherOptions{AfterIndex: 0, Recursive: true}
-	ew := w.kapi.Watcher(w.key, &watcherOpts)
+	ew := w.kapi.Watcher(w.entry.Source, &watcherOpts)
 	for {
 		resp, err := ew.Next(context.Background())
 		if err != nil {
