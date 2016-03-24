@@ -40,6 +40,7 @@ type Entry struct {
 	Tag         string
 	PreCommand  string `yaml:"pre-command"`
 	PostCommand string `yaml:"post-command"`
+	Order       map[string]int
 }
 
 // Application struct

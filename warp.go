@@ -11,6 +11,7 @@ import (
 // WarpCategory category of multiple entries in the warp menu
 type WarpCategory struct {
 	Title   string
+	Order   int
 	Entries WarpEntries
 }
 
@@ -24,7 +25,10 @@ func (categories WarpCategories) Len() int {
 }
 
 func (categories WarpCategories) Less(i, j int) bool {
-	return categories[i].Title < categories[j].Title
+	if categories[i].Order == categories[j].Order {
+		return categories[i].Title < categories[j].Title
+	}
+	return categories[i].Order > categories[j].Order
 }
 
 func (categories WarpCategories) Swap(i, j int) {
@@ -76,7 +80,7 @@ func unmarshal(kapi client.KeysAPI, key string) (RawData, error) {
 	return dogu, nil
 }
 
-func convert(dogus []RawData) WarpCategories {
+func convert(entry Entry, dogus []RawData) WarpCategories {
 	categories := map[string]*WarpCategory{}
 
 	for _, dogu := range dogus {
@@ -86,6 +90,8 @@ func convert(dogus []RawData) WarpCategories {
 			category = &WarpCategory{
 				Title:   categoryName,
 				Entries: WarpEntries{},
+				// TODO read order boost from etcd
+				Order: entry.Order[categoryName],
 			}
 			categories[categoryName] = category
 		}
@@ -140,5 +146,5 @@ func WarpReader(kapi client.KeysAPI, entry Entry, root string) (interface{}, err
 		dogus = filterByTag(dogus, entry.Tag)
 	}
 
-	return convert(dogus), nil
+	return convert(entry, dogus), nil
 }
