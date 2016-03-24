@@ -96,7 +96,7 @@ func (w *Watcher) write(data interface{}) error {
 }
 
 func (w *Watcher) run() {
-	data, err := w.reader(w.kapi, w.entry.Source)
+	data, err := w.reader(w.kapi, w.entry, w.entry.Source)
 	if err != nil {
 		log.Println("Error durring read", err)
 	} else {

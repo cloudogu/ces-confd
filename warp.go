@@ -106,9 +106,22 @@ func convert(dogus []RawData) WarpCategories {
 	return result
 }
 
+func filterByTag(dogus []RawData, tag string) []RawData {
+	filtered := []RawData{}
+	for _, raw := range dogus {
+		if raw["Tags"] != nil {
+			tags := raw["Tags"].([]interface{})
+			if tags != nil && contains(tags, tag) {
+				filtered = append(filtered, raw)
+			}
+		}
+	}
+	return filtered
+}
+
 // WarpReader reads from etcd and converts the keys and values to a warp menu
 // conform structure
-func WarpReader(kapi client.KeysAPI, root string) (interface{}, error) {
+func WarpReader(kapi client.KeysAPI, entry Entry, root string) (interface{}, error) {
 	resp, err := kapi.Get(context.Background(), root, nil)
 	if err != nil {
 		return nil, err
@@ -121,6 +134,10 @@ func WarpReader(kapi client.KeysAPI, root string) (interface{}, error) {
 			return nil, err
 		}
 		dogus = append(dogus, dogu)
+	}
+
+	if entry.Tag != "" {
+		dogus = filterByTag(dogus, entry.Tag)
 	}
 
 	return convert(dogus), nil

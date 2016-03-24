@@ -16,34 +16,34 @@ type Service struct {
 	URL  string
 }
 
-func contains(s []interface{}, e interface{}) bool {
-	for _, a := range s {
-		if a == e {
-			return true
-		}
+func createService(raw RawData) *Service {
+	return &Service{
+		Name: raw["name"].(string),
+		URL:  "http://" + raw["service"].(string),
 	}
-	return false
 }
 
-func convertToService(value string) (*Service, error) {
+func convertToService(entry Entry, value string) (*Service, error) {
 	raw := RawData{}
 	err := json.Unmarshal([]byte(value), &raw)
 	if err != nil {
 		return nil, err
 	}
 
-	tags := raw["tags"].([]interface{})
-	if contains(tags, "webapp") {
-		service := Service{
-			Name: raw["name"].(string),
-			URL:  "http://" + raw["service"].(string),
+	if entry.Tag != "" {
+		if raw["tags"] != nil {
+			tags := raw["tags"].([]interface{})
+			if contains(tags, entry.Tag) {
+				return createService(raw), err
+			}
+		} else {
+			return createService(raw), err
 		}
-		return &service, err
 	}
 	return nil, nil
 }
 
-func convertToServices(kapi client.KeysAPI, key string) (Services, error) {
+func convertToServices(kapi client.KeysAPI, entry Entry, key string) (Services, error) {
 	resp, err := kapi.Get(context.Background(), key, nil)
 	if err != nil {
 		return nil, err
@@ -51,7 +51,7 @@ func convertToServices(kapi client.KeysAPI, key string) (Services, error) {
 
 	services := Services{}
 	for _, child := range resp.Node.Nodes {
-		service, err := convertToService(child.Value)
+		service, err := convertToService(entry, child.Value)
 		if err != nil {
 			return nil, err
 		} else if service != nil {
@@ -64,7 +64,7 @@ func convertToServices(kapi client.KeysAPI, key string) (Services, error) {
 
 // ServiceReader reads from etcd and converts the keys and value to service
 // struct, which can easily used for configuration templates
-func ServiceReader(kapi client.KeysAPI, root string) (interface{}, error) {
+func ServiceReader(kapi client.KeysAPI, entry Entry, root string) (interface{}, error) {
 	resp, err := kapi.Get(context.Background(), root, nil)
 	if err != nil {
 		return nil, err
@@ -72,7 +72,7 @@ func ServiceReader(kapi client.KeysAPI, root string) (interface{}, error) {
 
 	services := Services{}
 	for _, child := range resp.Node.Nodes {
-		serviceEntries, err := convertToServices(kapi, child.Key)
+		serviceEntries, err := convertToServices(kapi, entry, child.Key)
 		if err != nil {
 			return nil, err
 		}

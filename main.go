@@ -20,7 +20,7 @@ const VERSION = "0.1.0"
 type RawData map[string]interface{}
 
 // DataReader fetches data from etcd
-type DataReader func(kapi client.KeysAPI, root string) (interface{}, error)
+type DataReader func(kapi client.KeysAPI, entry Entry, root string) (interface{}, error)
 
 // DataWriter writes data to disk
 type DataWriter func(entry Entry, target string, data interface{}) error
@@ -37,6 +37,7 @@ type Entry struct {
 	Target      string
 	Type        string
 	Template    string
+	Tag         string
 	PreCommand  string `yaml:"pre-command"`
 	PostCommand string `yaml:"post-command"`
 }
@@ -44,6 +45,15 @@ type Entry struct {
 // Application struct
 type Application struct {
 	Configuration *Configuration
+}
+
+func contains(s []interface{}, e interface{}) bool {
+	for _, a := range s {
+		if a == e {
+			return true
+		}
+	}
+	return false
 }
 
 func (app *Application) startWatch(kapi client.KeysAPI, wg sync.WaitGroup, entry Entry) {
