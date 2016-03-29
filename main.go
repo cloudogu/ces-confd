@@ -14,7 +14,7 @@ import (
 )
 
 // VERSION of the application
-const VERSION = "0.1.0"
+const VERSION = "0.1.3"
 
 // RawData is a map of raw data, it can be used to unmarshal json data
 type RawData map[string]interface{}
