@@ -59,9 +59,20 @@ func (entries WarpEntries) Swap(i, j int) {
 	entries[i], entries[j] = entries[j], entries[i]
 }
 
+func isKeyNotFound(err error) bool {
+	if cErr, ok := err.(client.Error); ok {
+		return cErr.Code == client.ErrorCodeKeyNotFound
+	}
+	return false
+}
+
 func unmarshal(kapi client.KeysAPI, key string) (RawData, error) {
 	resp, err := kapi.Get(context.Background(), key+"/current", nil)
 	if err != nil {
+		// the dogu seems to be unregistered
+		if isKeyNotFound(err) {
+			return nil, nil
+		}
 		return nil, err
 	}
 
@@ -138,8 +149,9 @@ func WarpReader(kapi client.KeysAPI, entry Entry, root string) (interface{}, err
 		dogu, err := unmarshal(kapi, child.Key)
 		if err != nil {
 			return nil, err
+		} else if dogu != nil {
+			dogus = append(dogus, dogu)
 		}
-		dogus = append(dogus, dogu)
 	}
 
 	if entry.Tag != "" {
