@@ -3,8 +3,10 @@ package main
 import (
 	"encoding/json"
 	"sort"
+	"strings"
 
-	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
+	"golang.org/x/net/context"
+
 	"github.com/coreos/etcd/client"
 )
 
@@ -91,6 +93,12 @@ func unmarshal(kapi client.KeysAPI, key string) (RawData, error) {
 	return dogu, nil
 }
 
+func createHref(dogu RawData) string {
+	// remove namespace
+	parts := strings.Split(dogu["Name"].(string), "/")
+	return "/" + parts[len(parts)-1]
+}
+
 func convert(entry Entry, dogus []RawData) WarpCategories {
 	categories := map[string]*WarpCategory{}
 
@@ -109,7 +117,7 @@ func convert(entry Entry, dogus []RawData) WarpCategories {
 
 		category.Entries = append(category.Entries, WarpEntry{
 			DisplayName: dogu["DisplayName"].(string),
-			Href:        "/" + dogu["Name"].(string),
+			Href:        createHref(dogu),
 			Title:       dogu["Description"].(string),
 		})
 	}

@@ -11,10 +11,13 @@ import (
 
 	"github.com/codegangsta/cli"
 	"github.com/coreos/etcd/client"
+	"github.com/pkg/errors"
 )
 
-// VERSION of the application
-const VERSION = "0.1.3"
+var (
+	// Version of the application
+	Version string
+)
 
 // RawData is a map of raw data, it can be used to unmarshal json data
 type RawData map[string]interface{}
@@ -73,7 +76,7 @@ func (app *Application) createEtcdClient() (client.KeysAPI, error) {
 
 	ec, err := client.New(cfg)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "failed to create etcd client")
 	}
 
 	return client.NewKeysAPI(ec), nil
@@ -82,12 +85,12 @@ func (app *Application) createEtcdClient() (client.KeysAPI, error) {
 func (app *Application) readConfiguration(path string) error {
 	data, err := ioutil.ReadFile(path)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "could not read configuration at "+path)
 	}
 
 	err = yaml.Unmarshal(data, app.Configuration)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "could not unmarshal configuration "+path)
 	}
 
 	return nil
@@ -121,7 +124,7 @@ func main() {
 
 	app := cli.NewApp()
 	app.Name = "ces-confd"
-	app.Version = VERSION
+	app.Version = Version
 	app.Usage = "watches etcd for changes and writes config files"
 	app.Action = application.run
 	app.Flags = []cli.Flag{
