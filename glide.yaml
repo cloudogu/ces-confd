@@ -1,0 +1,11 @@
+package: github.com/cloudogu/ces-confd
+import:
+- package: github.com/codegangsta/cli
+- package: github.com/coreos/etcd
+  subpackages:
+  - Godeps/_workspace/src/golang.org/x/net/context
+  - client
+- package: gopkg.in/yaml.v2
+- package: golang.org/x/net
+  subpackages:
+  - context

@@ -1,0 +1,23 @@
+hash: f61778792e0ab019fc50fde7fcb9938e7e79f1bae86d8d10e99c1103b630344c
+updated: 2016-07-19T09:37:55.95588436+02:00
+imports:
+- name: github.com/codegangsta/cli
+  version: 11c134509d89c2018675f369955218a180dc7428
+- name: github.com/coreos/etcd
+  version: 1bf78476cf975a15fcdcd1cf3c21f4f343487d55
+  subpackages:
+  - Godeps/_workspace/src/golang.org/x/net/context
+  - client
+  - pkg/pathutil
+  - pkg/types
+- name: github.com/ugorji/go
+  version: b94837a2404ab90efe9289e77a70694c355739cb
+  subpackages:
+  - codec
+- name: golang.org/x/net
+  version: 3797cd8864994d713d909eda5e61ede8683fdc12
+  subpackages:
+  - context
+- name: gopkg.in/yaml.v2
+  version: e4d366fc3c7938e2958e662b4258c7a89e1f0e3e
+devImports: []

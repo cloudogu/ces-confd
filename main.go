@@ -13,8 +13,10 @@ import (
 	"github.com/coreos/etcd/client"
 )
 
-// VERSION of the application
-const VERSION = "0.1.3"
+var (
+	// Version of the application
+	Version string
+)
 
 // RawData is a map of raw data, it can be used to unmarshal json data
 type RawData map[string]interface{}
@@ -121,7 +123,7 @@ func main() {
 
 	app := cli.NewApp()
 	app.Name = "ces-confd"
-	app.Version = VERSION
+	app.Version = Version
 	app.Usage = "watches etcd for changes and writes config files"
 	app.Action = application.run
 	app.Flags = []cli.Flag{
