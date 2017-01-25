@@ -4,7 +4,7 @@ DIST_DIR=dist
 BINARY=ces-confd
 
 # These are the values we want to pass for Version and BuildTime
-VERSION=0.1.4
+VERSION=0.1.5
 
 # Setup the -ldflags option for go build here, interpolate the variable values
 LDFLAGS=-ldflags "-linkmode external -extldflags -static -X main.Version=${VERSION}"

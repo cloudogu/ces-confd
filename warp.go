@@ -8,6 +8,7 @@ import (
 	"golang.org/x/net/context"
 
 	"github.com/coreos/etcd/client"
+  "github.com/pkg/errors"
 )
 
 // WarpCategory category of multiple entries in the warp menu
@@ -75,19 +76,19 @@ func unmarshal(kapi client.KeysAPI, key string) (RawData, error) {
 		if isKeyNotFound(err) {
 			return nil, nil
 		}
-		return nil, err
+		return nil, errors.Wrapf(err, "failed to read key %s from etcd", key)
 	}
 
 	version := resp.Node.Value
 	resp, err = kapi.Get(context.Background(), key+"/"+version, nil)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrapf(err, "failed to read version child from key %s", key)
 	}
 
 	dogu := RawData{}
 	err = json.Unmarshal([]byte(resp.Node.Value), &dogu)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "failed to unmarshall json from etcd")
 	}
 
 	return dogu, nil
@@ -149,14 +150,14 @@ func filterByTag(dogus []RawData, tag string) []RawData {
 func WarpReader(kapi client.KeysAPI, entry Entry, root string) (interface{}, error) {
 	resp, err := kapi.Get(context.Background(), root, nil)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrapf(err, "failed to read root entry %s from etcd", root)
 	}
 
 	dogus := []RawData{}
 	for _, child := range resp.Node.Nodes {
 		dogu, err := unmarshal(kapi, child.Key)
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrap(err, "failed to unmarshall node from etcd")
 		} else if dogu != nil {
 			dogus = append(dogus, dogu)
 		}

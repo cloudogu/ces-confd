@@ -6,6 +6,7 @@ import (
 	"golang.org/x/net/context"
 
 	"github.com/coreos/etcd/client"
+  "github.com/pkg/errors"
 )
 
 // Services is a collection of service structs
@@ -28,7 +29,7 @@ func convertToService(entry Entry, value string) (*Service, error) {
 	raw := RawData{}
 	err := json.Unmarshal([]byte(value), &raw)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "failed to unmarshall service json")
 	}
 
 	if entry.Tag != "" {
@@ -47,14 +48,14 @@ func convertToService(entry Entry, value string) (*Service, error) {
 func convertToServices(kapi client.KeysAPI, entry Entry, key string) (Services, error) {
 	resp, err := kapi.Get(context.Background(), key, nil)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrapf(err, "failed to read service key %s from etcd", key)
 	}
 
 	services := Services{}
 	for _, child := range resp.Node.Nodes {
 		service, err := convertToService(entry, child.Value)
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrap(err, "failed to convert node to service")
 		} else if service != nil {
 			services = append(services, service)
 		}
@@ -68,14 +69,14 @@ func convertToServices(kapi client.KeysAPI, entry Entry, key string) (Services, 
 func ServiceReader(kapi client.KeysAPI, entry Entry, root string) (interface{}, error) {
 	resp, err := kapi.Get(context.Background(), root, nil)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrapf(err, "failed to read root %s from etcd", root)
 	}
 
 	services := Services{}
 	for _, child := range resp.Node.Nodes {
 		serviceEntries, err := convertToServices(kapi, entry, child.Key)
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrap(err, "failed to convert node to service")
 		}
 		for _, service := range serviceEntries {
 			services = append(services, service)
