@@ -19,12 +19,24 @@ func CreateWatcher(kapi client.KeysAPI, entry Entry) Watcher {
 		entry: entry,
 	}
 
-	switch entry.Type {
-	case "warp":
-		watcher.reader = WarpReader
-	case "service":
-		watcher.reader = ServiceReader
-	}
+  log.Printf("CreateWatcher from source %i", entry.Source)
+  for _, source := range entry.Source {
+    log.Printf("found source %i", source)
+    var read func(kapi client.KeysAPI, entry Entry, root string) (interface{}, error)
+    log.Printf("reader for source %s", source.Reader)
+    switch source.Reader {
+    case "dogus":
+      read = DogusWarpReader
+    case "externals":
+      read = ExternalsWarpReader
+    case "service":
+      read = ServiceReader
+    }
+    if read != nil {
+      newReader := DataReader{rootPath:source.Path, read:read}
+      watcher.reader = append(watcher.reader, newReader)
+    }
+  }
 
 	if entry.Template != "" {
 		watcher.writer = TemplateWriter
@@ -39,7 +51,7 @@ func CreateWatcher(kapi client.KeysAPI, entry Entry) Watcher {
 type Watcher struct {
 	kapi   client.KeysAPI
 	entry  Entry
-	reader DataReader
+	reader []DataReader
 	writer DataWriter
 }
 
@@ -63,8 +75,8 @@ func (w *Watcher) post() error {
 }
 
 func (w *Watcher) preCheck(data interface{}) error {
-	dir := filepath.Dir(w.entry.Target)
-	prefix := filepath.Base(w.entry.Target)
+	dir := filepath.Dir(w.entry.Target[0].Path)
+	prefix := filepath.Base(w.entry.Target[0].Path)
 	tmpFile, err := ioutil.TempFile(dir, prefix)
 	if err != nil {
 		return errors.Wrap(err, "failed to create temp file for pre check")
@@ -93,7 +105,7 @@ func (w *Watcher) write(data interface{}) error {
 		}
 	}
 
-	err := w.writer(w.entry, w.entry.Target, data)
+	err := w.writer(w.entry, w.entry.Target[0].Path, data)
 	if err != nil {
 		return errors.Wrap(err, "failed to write data")
 	}
@@ -108,22 +120,31 @@ func (w *Watcher) write(data interface{}) error {
 }
 
 func (w *Watcher) run() {
-	data, err := w.reader(w.kapi, w.entry, w.entry.Source)
-	if err != nil {
-		log.Println("Error durring read", err)
-	} else {
-		err = w.write(data)
-		if err != nil {
-			log.Println("Error durring write", err)
-		}
-	}
+  var data []interface{}
+  for _, reader := range w.reader {
+    readData, err := reader.read(w.kapi, w.entry, reader.rootPath)
+    log.Printf("readData %i",readData)
+    if err != nil {
+      log.Println("Error durring read", err)
+    }
+    data = append(data, readData.. )
+  }
+  log.Printf("found data %i", data)
+
+  if len(data)>0 {
+    err := w.write(data)
+    if err != nil {
+      log.Println("Error durring write", err)
+    }
+  }
 }
 
 // Watch starts watching for changes in etcd
 func (w *Watcher) Watch() {
 	w.run()
 	watcherOpts := client.WatcherOptions{AfterIndex: 0, Recursive: true}
-	ew := w.kapi.Watcher(w.entry.Source, &watcherOpts)
+  log.Printf("register watcher for %s", w.entry.Source[0].Path)
+	ew := w.kapi.Watcher(w.entry.Source[0].Path, &watcherOpts) // TODO: parallel watch für alle reader
 	for {
 		resp, err := ew.Next(context.Background())
 		if err != nil {
