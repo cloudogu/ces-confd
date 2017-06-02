@@ -78,9 +78,15 @@ func (app *Application) run(c *cli.Context) {
 	var syncWaitGroup sync.WaitGroup
 
 	syncWaitGroup.Add(1)
-	go warp.Run(app.Configuration.Warp, kapi, syncWaitGroup)
+	go func(){
+    warp.Run(app.Configuration.Warp, kapi)
+    syncWaitGroup.Done()
+  }()
 	syncWaitGroup.Add(1)
-	go service.Run(app.Configuration.Service, kapi, syncWaitGroup)
+	go func(){
+    service.Run(app.Configuration.Service, kapi)
+    syncWaitGroup.Done()
+  }()
 
 	syncWaitGroup.Wait()
 }
