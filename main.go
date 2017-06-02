@@ -7,12 +7,14 @@ import (
 
 	"gopkg.in/yaml.v2"
 
+	"sync"
+	"time"
+
+	"github.com/cloudogu/ces-confd/confd/service"
+	"github.com/cloudogu/ces-confd/confd/warp"
 	"github.com/codegangsta/cli"
 	"github.com/coreos/etcd/client"
 	"github.com/pkg/errors"
-  "time"
-  "github.com/cloudogu/ces-confd/confd/warp"
-  "github.com/cloudogu/ces-confd/confd/service"
 )
 
 var (
@@ -22,9 +24,9 @@ var (
 
 // Configuration main configuration object
 type Configuration struct {
-  Endpoint string
-  Warp warp.Configuration
-  Service service.Configuration
+	Endpoint string
+	Warp     warp.Configuration
+	Service  service.Configuration
 }
 
 // Application struct
@@ -68,15 +70,19 @@ func (app *Application) run(c *cli.Context) {
 		log.Fatal(err)
 	}
 
-  kapi, err := app.createEtcdClient()
+	kapi, err := app.createEtcdClient()
 	if err != nil {
 		log.Fatal(err)
 	}
 
-  go warp.Run(app.Configuration.Warp, kapi)
-  go service.Run(app.Configuration.Service, kapi)
+	var syncWaitGroup sync.WaitGroup
 
-  time.Sleep(10*time.Second)
+	syncWaitGroup.Add(1)
+	go warp.Run(app.Configuration.Warp, kapi, syncWaitGroup)
+	syncWaitGroup.Add(1)
+	go service.Run(app.Configuration.Service, kapi, syncWaitGroup)
+
+	syncWaitGroup.Wait()
 }
 
 func main() {
