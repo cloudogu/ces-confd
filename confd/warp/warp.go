@@ -2,19 +2,14 @@ package warp
 
 import (
 	"encoding/json"
-	"sort"
-	"strings"
-	"sync"
-
-	"golang.org/x/net/context"
-
+	"io/ioutil"
 	"log"
+	"strings"
 
 	. "github.com/cloudogu/ces-confd/confd"
 	"github.com/coreos/etcd/client"
 	"github.com/pkg/errors"
-
-	"io/ioutil"
+	"golang.org/x/net/context"
 )
 
 type Configuration struct {
@@ -133,34 +128,6 @@ func createHref(dogu RawData) string {
 	return "/" + parts[len(parts)-1]
 }
 
-func convertElementsToCategories(order Order, elements []RawData, createEntry func(RawData) Entry) Categories {
-	categories := map[string]*Category{}
-
-	for _, element := range elements {
-		categoryName := element["Category"].(string)
-		category := categories[categoryName]
-		if category == nil {
-			category = &Category{
-				Title:   categoryName,
-				Entries: Entries{},
-				// TODO read order boost from etcd
-				Order: order[categoryName],
-			}
-			categories[categoryName] = category
-		}
-		warpEntry := createEntry(element)
-		category.Entries = append(category.Entries, warpEntry)
-	}
-
-	result := Categories{}
-	for _, cat := range categories {
-		sort.Sort(cat.Entries)
-		result = append(result, cat)
-	}
-	sort.Sort(result)
-	return result
-}
-
 func createDoguEntry(element RawData) Entry {
 	return Entry{
 		DisplayName: element["DisplayName"].(string),
@@ -192,68 +159,6 @@ func filterByTag(dogus []RawData, tag string) []RawData {
 	return filtered
 }
 
-// DogusReader reads from etcd and converts the keys and values to a warp menu
-// conform structure
-func dogusReader(source Source, kapi client.KeysAPI, order Order) (Categories, error) {
-	resp, err := kapi.Get(context.Background(), source.Path, nil)
-	if err != nil {
-		return nil, errors.Wrapf(err, "failed to read root entry %s from etcd", source.Path)
-	}
-	dogus := []RawData{}
-	for _, child := range resp.Node.Nodes {
-		dogu, err := unmarshalDogu(kapi, child.Key)
-		if err != nil {
-			return nil, errors.Wrap(err, "failed to unmarshall node from etcd")
-		} else if dogu != nil {
-			dogus = append(dogus, dogu)
-		}
-	}
-
-	if source.Tag != "" {
-		dogus = filterByTag(dogus, source.Tag)
-	}
-	return convertElementsToCategories(order, dogus, createDoguEntry), nil
-}
-
-func externalsReader(source Source, kapi client.KeysAPI, order Order) (Categories, error) {
-	resp, err := kapi.Get(context.Background(), source.Path, nil)
-	if err != nil {
-		return nil, errors.Wrapf(err, "failed to read root entry %s from etcd", source.Path)
-	}
-	externals := []RawData{}
-	for _, child := range resp.Node.Nodes {
-		external, err := unmarshalExternal(kapi, child.Key)
-		if err != nil {
-			return nil, errors.Wrap(err, "failed to unmarshall node from etcd")
-		} else if external != nil {
-			externals = append(externals, external)
-		}
-	}
-	return convertElementsToCategories(order, externals, createExternalEntry), nil
-}
-
-func readSource(source Source, kapi client.KeysAPI, order Order) (Categories, error) {
-	switch source.SourceType {
-	case "dogus":
-		return dogusReader(source, kapi, order)
-	case "externals":
-		return externalsReader(source, kapi, order)
-	}
-	return nil, errors.New("wrong source type")
-}
-
-func readFromConfig(configuration Configuration, kapi client.KeysAPI) (Categories, error) {
-	var data Categories
-	for _, source := range configuration.Sources {
-		categories, err := readSource(source, kapi, configuration.Order)
-		if err != nil {
-			log.Println("Error durring read", err)
-		}
-		data.insertCategories(categories)
-	}
-	return data, nil
-}
-
 func (destination *Categories) insertCategories(newCategories Categories) {
 	for _, newCategory := range newCategories {
 		destination.insertCategory(newCategory)
@@ -271,7 +176,7 @@ func (destination *Categories) insertCategory(newCategory *Category) {
 }
 
 // JSONWriter converts the data to a json
-func JSONWriter(target string, data interface{}) error {
+func jsonWriter(target string, data interface{}) error {
 	bytes, err := json.Marshal(data)
 	if err != nil {
 		return errors.Wrap(err, "failed to marshal data to json")
@@ -281,12 +186,16 @@ func JSONWriter(target string, data interface{}) error {
 }
 
 func execute(configuration Configuration, kapi client.KeysAPI) {
-	categories, err := readFromConfig(configuration, kapi)
+	reader := ConfigReader{
+		kapi:          kapi,
+		configuration: configuration,
+	}
+	categories, err := reader.readFromConfig(configuration, kapi)
 	if err != nil {
 		log.Println("Error durring read", err)
 	}
 	log.Printf("all found categories: %i", categories)
-	JSONWriter(configuration.Target, categories)
+	jsonWriter(configuration.Target, categories)
 }
 
 func watch(source Source, kapi client.KeysAPI, execChannel chan Source) {
@@ -305,7 +214,7 @@ func watch(source Source, kapi client.KeysAPI, execChannel chan Source) {
 	}
 }
 
-func Run(configuration Configuration, kapi client.KeysAPI, syncWaitGroup sync.WaitGroup) {
+func Run(configuration Configuration, kapi client.KeysAPI) {
 	execute(configuration, kapi)
 	log.Println("start watcher for warp entries")
 	execChannel := make(chan Source)
@@ -316,6 +225,4 @@ func Run(configuration Configuration, kapi client.KeysAPI, syncWaitGroup sync.Wa
 	for range execChannel {
 		execute(configuration, kapi)
 	}
-
-	syncWaitGroup.Done()
 }

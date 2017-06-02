@@ -2,10 +2,6 @@ package service
 
 import (
 	"encoding/json"
-	"sync"
-
-	"golang.org/x/net/context"
-
 	"html/template"
 	"log"
 	"os"
@@ -14,6 +10,7 @@ import (
 	. "github.com/cloudogu/ces-confd/confd"
 	"github.com/coreos/etcd/client"
 	"github.com/pkg/errors"
+	"golang.org/x/net/context"
 )
 
 // Services is a collection of service structs
@@ -159,10 +156,8 @@ func watch(conf Configuration, kapi client.KeysAPI) {
 	}
 }
 
-func Run(conf Configuration, kapi client.KeysAPI, syncWaitGroup sync.WaitGroup) {
+func Run(conf Configuration, kapi client.KeysAPI) {
 	execute(conf, kapi)
 	log.Println("start service watcher")
 	watch(conf, kapi)
-
-	syncWaitGroup.Done()
 }
