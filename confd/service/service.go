@@ -3,12 +3,9 @@ package service
 import (
 	"encoding/json"
 	"html/template"
-	"io/ioutil"
 	"log"
 	"os"
-	"os/exec"
 	"path"
-	"path/filepath"
 
 	. "github.com/cloudogu/ces-confd/confd"
 	"github.com/coreos/etcd/client"
@@ -154,47 +151,6 @@ func write(conf Configuration, data interface{}) error {
 	return nil
 }
 
-func executeCommand(command string) error {
-	cmd := exec.Command("/bin/sh", "-c", command)
-	err := cmd.Start()
-	if err != nil {
-		return errors.Wrapf(err, "failed to execute command: \"%s\"", command)
-	}
-
-	return cmd.Wait()
-}
-
-func post(command string) error {
-	log.Println("execute post command", command)
-	err := executeCommand(command)
-	if err != nil {
-		return errors.Wrap(err, "failed to execute post command")
-	}
-	return nil
-}
-
-func preCheck(conf Configuration, data interface{}) error {
-	dir := filepath.Dir(conf.Target)
-	prefix := filepath.Base(conf.Target)
-	tmpFile, err := ioutil.TempFile(dir, prefix)
-	if err != nil {
-		return errors.Wrap(err, "failed to create temp file for pre check")
-	}
-
-	defer os.Remove(tmpFile.Name())
-	conf.Target = tmpFile.Name()
-	err = write(conf, data)
-	if err != nil {
-		return errors.Wrap(err, "failed to write to temp file for pre check")
-	}
-	log.Println("execute pre command", conf.PreCommand)
-	err = executeCommand(conf.PreCommand)
-	if err != nil {
-		return errors.Wrap(err, "pre check command failed")
-	}
-	return err
-}
-
 // naming
 func execute(conf Configuration, kapi client.KeysAPI) {
 	log.Println("read from etcd")
@@ -220,7 +176,7 @@ func watch(conf Configuration, kapi client.KeysAPI) {
 		} else {
 			action := resp.Action
 			log.Printf("%s changed, action=%s", resp.Node.Key, action)
-			readAndWrite(conf, kapi)
+			execute(conf, kapi)
 		}
 	}
 }
