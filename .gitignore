@@ -139,6 +139,6 @@ Temporary Items
 
 # End of https://www.gitignore.io/api/go,intellij,code,atom,linux,osx
 
-dist
+target
 .tmp
 .idea
