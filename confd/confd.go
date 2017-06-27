@@ -15,3 +15,13 @@ func Contains(slice []interface{}, item interface{}) bool {
 	}
 	return false
 }
+
+// ContainsString returns true if the slice contains the item
+func ContainsString(slice []string, item string) bool {
+	for _, sliceItem := range slice {
+		if sliceItem == item {
+			return true
+		}
+	}
+	return false
+}

@@ -6,7 +6,6 @@ import (
 
 	"sort"
 
-	"github.com/cloudogu/ces-confd/confd"
 	"github.com/coreos/etcd/client"
 	"github.com/pkg/errors"
 )
@@ -17,11 +16,11 @@ type ConfigReader struct {
 	kapi          client.KeysAPI
 }
 
-func (reader *ConfigReader) convertElementsToCategories(elements []confd.RawData, createEntry func(confd.RawData) Entry) Categories {
+func (reader *ConfigReader) createCategories(entries []EntryWithCategory) Categories {
 	categories := map[string]*Category{}
 
-	for _, element := range elements {
-		categoryName := element["Category"].(string)
+	for _, entry := range entries {
+		categoryName := entry.Category
 		category := categories[categoryName]
 		if category == nil {
 			category = &Category{
@@ -32,8 +31,7 @@ func (reader *ConfigReader) convertElementsToCategories(elements []confd.RawData
 			}
 			categories[categoryName] = category
 		}
-		warpEntry := createEntry(element)
-		category.Entries = append(category.Entries, warpEntry)
+		category.Entries = append(category.Entries, entry.Entry)
 	}
 
 	result := Categories{}
@@ -48,41 +46,40 @@ func (reader *ConfigReader) convertElementsToCategories(elements []confd.RawData
 // dogusReader reads from etcd and converts the keys and values to a warp menu
 // conform structure
 func (reader *ConfigReader) dogusReader(source Source) (Categories, error) {
+	log.Printf("read dogus from %s for warp menu", source.Path)
 	resp, err := reader.kapi.Get(context.Background(), source.Path, nil)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to read root entry %s from etcd", source.Path)
 	}
-	dogus := []confd.RawData{}
+	dogus := []EntryWithCategory{}
 	for _, child := range resp.Node.Nodes {
-		dogu, err := unmarshalDogu(reader.kapi, child.Key)
+		dogu, err := readAndUnmarshalDogu(reader.kapi, child.Key, source.Tag)
 		if err != nil {
-			return nil, errors.Wrap(err, "failed to unmarshall node from etcd")
-		} else if dogu != nil {
+			log.Printf("failed to read and unmarshal dogu: %v", err)
+		} else if dogu.Entry.Title != "" { // TODO more explicit way to handle filtered entries
 			dogus = append(dogus, dogu)
 		}
 	}
 
-	if source.Tag != "" {
-		dogus = filterByTag(dogus, source.Tag)
-	}
-	return reader.convertElementsToCategories(dogus, createDoguEntry), nil
+	return reader.createCategories(dogus), nil
 }
 
 func (reader *ConfigReader) externalsReader(source Source) (Categories, error) {
+	log.Printf("read externals from %s for warp menu", source.Path)
 	resp, err := reader.kapi.Get(context.Background(), source.Path, nil)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to read root entry %s from etcd", source.Path)
 	}
-	externals := []confd.RawData{}
+	externals := []EntryWithCategory{}
 	for _, child := range resp.Node.Nodes {
-		external, err := unmarshalExternal(reader.kapi, child.Key)
+		external, err := readAndUnmarshalExternal(reader.kapi, child.Key)
 		if err != nil {
-			return nil, errors.Wrap(err, "failed to unmarshall node from etcd")
-		} else if external != nil {
+			log.Printf("failed to read and unmarshal external: %v", err)
+		} else {
 			externals = append(externals, external)
 		}
 	}
-	return reader.convertElementsToCategories(externals, createExternalEntry), nil
+	return reader.createCategories(externals), nil
 }
 
 func (reader *ConfigReader) readSource(source Source) (Categories, error) {

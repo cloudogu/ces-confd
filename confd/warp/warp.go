@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"io/ioutil"
 	"log"
-	"strings"
 
 	"github.com/cloudogu/ces-confd/confd"
 	"github.com/coreos/etcd/client"
@@ -61,6 +60,12 @@ type Entry struct {
 	Target      string
 }
 
+// EntryWithCategory is a dto for entries with a category
+type EntryWithCategory struct {
+	Entry    Entry
+	Category string
+}
+
 // Entries is a collection of warp entries
 type Entries []Entry
 
@@ -83,82 +88,6 @@ func isKeyNotFound(err error) bool {
 		return cErr.Code == client.ErrorCodeKeyNotFound
 	}
 	return false
-}
-
-func unmarshalDogu(kapi client.KeysAPI, key string) (confd.RawData, error) {
-	resp, err := kapi.Get(context.Background(), key+"/current", nil)
-	if err != nil {
-		// the dogu seems to be unregistered
-		if isKeyNotFound(err) {
-			return nil, nil
-		}
-		return nil, errors.Wrapf(err, "failed to read key %s from etcd", key)
-	}
-
-	version := resp.Node.Value
-	resp, err = kapi.Get(context.Background(), key+"/"+version, nil)
-	if err != nil {
-		return nil, errors.Wrapf(err, "failed to read version child from key %s", key)
-	}
-
-	dogu := confd.RawData{}
-	err = json.Unmarshal([]byte(resp.Node.Value), &dogu)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to unmarshall json from etcd")
-	}
-
-	return dogu, nil
-}
-
-func unmarshalExternal(kapi client.KeysAPI, key string) (confd.RawData, error) {
-	resp, err := kapi.Get(context.Background(), key, nil)
-	if err != nil {
-		return nil, errors.Wrapf(err, "failed to read key %s from etcd", key)
-	}
-	external := confd.RawData{}
-	err = json.Unmarshal([]byte(resp.Node.Value), &external)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to unmarshall json from etcd")
-	}
-
-	return external, nil
-}
-
-func createHref(dogu confd.RawData) string {
-	// remove namespace
-	parts := strings.Split(dogu["Name"].(string), "/")
-	return "/" + parts[len(parts)-1]
-}
-
-func createDoguEntry(element confd.RawData) Entry {
-	return Entry{
-		DisplayName: element["DisplayName"].(string),
-		Href:        createHref(element),
-		Title:       element["Description"].(string),
-		Target:      "self",
-	}
-}
-
-func createExternalEntry(element confd.RawData) Entry {
-	return Entry{
-		DisplayName: element["DisplayName"].(string),
-		Href:        element["URL"].(string),
-		Title:       element["Description"].(string),
-		Target:      "external",
-	}
-}
-
-func filterByTag(dogus []confd.RawData, tag string) []confd.RawData {
-	filtered := []confd.RawData{}
-	for _, raw := range dogus {
-		if raw["Tags"] != nil {
-			tags := raw["Tags"].([]interface{})
-			if tags != nil && confd.Contains(tags, tag) {
-				filtered = append(filtered, raw)
-			}
-		}
-	}
-	return filtered
 }
 
 func (categories *Categories) insertCategories(newCategories Categories) {
