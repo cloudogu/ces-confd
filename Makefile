@@ -151,7 +151,9 @@ ${XUNIT_XML}:
 	@if grep '^FAIL' target/unit-tests.log; then \
 		exit 1; \
 	fi
-	cat target/unit-tests.log | go2xunit -output $@
+	@if grep '^=== RUN' target/unit-tests.log; then \
+	  cat target/unit-tests.log | go2xunit -output $@; \
+	fi
 
 
 # integration tests, not yet
