@@ -83,7 +83,7 @@ GO2XUNIT=go2xunit
 LINTFLAGS=--vendor --exclude="vendor" --exclude="_test.go"
 LINTFLAGS+=--disable-all --enable=errcheck --enable=vet --enable=golint
 LINTFLAGS+=--deadline=2m
-LDFLAGS=-ldflags "-linkmode external -extldflags -static -X main.Version=${VERSION} -X main.BuildTime=${BUILD_TIME} -X main.CommitID=${COMMIT_ID}"
+LDFLAGS=-ldflags "-extldflags -static -X main.Version=${VERSION} -X main.BuildTime=${BUILD_TIME} -X main.CommitID=${COMMIT_ID}"
 GLIDEFLAGS=
 
 
@@ -132,7 +132,7 @@ dependencies: info
 ${EXECUTABLE}: dependencies
 	@echo "compiling ..."
 	mkdir -p $(COMPILE_TARGET_DIR)
-	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -a -tags netgo ${LDFLAGS} -installsuffix cgo -o $@
+	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -a -tags netgo ${LDFLAGS} -o $@
 	@echo "... executable can be found at $@"
 
 ${PACKAGE}: ${EXECUTABLE}
