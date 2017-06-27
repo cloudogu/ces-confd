@@ -4,11 +4,14 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
-	"sync"
-	"time"
 
 	"gopkg.in/yaml.v2"
 
+	"sync"
+	"time"
+
+	"github.com/cloudogu/ces-confd/confd/service"
+	"github.com/cloudogu/ces-confd/confd/warp"
 	"github.com/codegangsta/cli"
 	"github.com/coreos/etcd/client"
 	"github.com/pkg/errors"
@@ -19,51 +22,16 @@ var (
 	Version string
 )
 
-// RawData is a map of raw data, it can be used to unmarshal json data
-type RawData map[string]interface{}
-
-// DataReader fetches data from etcd
-type DataReader func(kapi client.KeysAPI, entry Entry, root string) (interface{}, error)
-
-// DataWriter writes data to disk
-type DataWriter func(entry Entry, target string, data interface{}) error
-
 // Configuration main configuration object
 type Configuration struct {
 	Endpoint string
-	Entries  []Entry
-}
-
-// Entry is a configuration entry
-type Entry struct {
-	Source      string
-	Target      string
-	Type        string
-	Template    string
-	Tag         string
-	PreCommand  string `yaml:"pre-command"`
-	PostCommand string `yaml:"post-command"`
-	Order       map[string]int
+	Warp     warp.Configuration
+	Service  service.Configuration
 }
 
 // Application struct
 type Application struct {
 	Configuration *Configuration
-}
-
-func contains(s []interface{}, e interface{}) bool {
-	for _, a := range s {
-		if a == e {
-			return true
-		}
-	}
-	return false
-}
-
-func (app *Application) startWatch(kapi client.KeysAPI, wg sync.WaitGroup, entry Entry) {
-	watcher := CreateWatcher(kapi, entry)
-	watcher.Watch()
-	wg.Done()
 }
 
 func (app *Application) createEtcdClient() (client.KeysAPI, error) {
@@ -107,13 +75,20 @@ func (app *Application) run(c *cli.Context) {
 		log.Fatal(err)
 	}
 
-	var wg sync.WaitGroup
-	for _, entry := range app.Configuration.Entries {
-		wg.Add(1)
-		go app.startWatch(kapi, wg, entry)
-	}
+	var syncWaitGroup sync.WaitGroup
 
-	wg.Wait()
+	syncWaitGroup.Add(1)
+	go func(){
+    warp.Run(app.Configuration.Warp, kapi)
+    syncWaitGroup.Done()
+  }()
+	syncWaitGroup.Add(1)
+	go func(){
+    service.Run(app.Configuration.Service, kapi)
+    syncWaitGroup.Done()
+  }()
+
+	syncWaitGroup.Wait()
 }
 
 func main() {
