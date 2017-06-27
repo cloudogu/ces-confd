@@ -36,7 +36,7 @@
 PACKAGES=$(shell go list ./... | grep -v /vendor/)
 
 ARTIFACT_ID=ces-confd
-VERSION=0.1.5
+VERSION=0.2.0
 BUILD_TIME:=$(shell date +%FT%T%z)
 COMMIT_ID:=$(shell git rev-parse HEAD)
 
