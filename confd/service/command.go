@@ -37,7 +37,14 @@ func preCheck(conf Configuration, data interface{}) error {
 		return errors.Wrap(err, "failed to create temp file for pre check")
 	}
 
-	defer os.Remove(tmpFile.Name())
+	defer func() {
+		err := os.Remove(tmpFile.Name())
+		if err != nil {
+			// TODO check if this is a fatal case
+			log.Printf("failed to remove temporary file: %v", err)
+		}
+	}()
+
 	conf.Target = tmpFile.Name()
 	err = write(conf, data)
 	if err != nil {

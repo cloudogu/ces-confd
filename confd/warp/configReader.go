@@ -6,17 +6,18 @@ import (
 
 	"sort"
 
-	. "github.com/cloudogu/ces-confd/confd"
+	"github.com/cloudogu/ces-confd/confd"
 	"github.com/coreos/etcd/client"
 	"github.com/pkg/errors"
 )
 
+// ConfigReader reads the configuration for the warp menu from etcd
 type ConfigReader struct {
 	configuration Configuration
 	kapi          client.KeysAPI
 }
 
-func (reader *ConfigReader) convertElementsToCategories(elements []RawData, createEntry func(RawData) Entry) Categories {
+func (reader *ConfigReader) convertElementsToCategories(elements []confd.RawData, createEntry func(confd.RawData) Entry) Categories {
 	categories := map[string]*Category{}
 
 	for _, element := range elements {
@@ -51,7 +52,7 @@ func (reader *ConfigReader) dogusReader(source Source) (Categories, error) {
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to read root entry %s from etcd", source.Path)
 	}
-	dogus := []RawData{}
+	dogus := []confd.RawData{}
 	for _, child := range resp.Node.Nodes {
 		dogu, err := unmarshalDogu(reader.kapi, child.Key)
 		if err != nil {
@@ -72,7 +73,7 @@ func (reader *ConfigReader) externalsReader(source Source) (Categories, error) {
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to read root entry %s from etcd", source.Path)
 	}
-	externals := []RawData{}
+	externals := []confd.RawData{}
 	for _, child := range resp.Node.Nodes {
 		external, err := unmarshalExternal(reader.kapi, child.Key)
 		if err != nil {

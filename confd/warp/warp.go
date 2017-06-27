@@ -6,18 +6,20 @@ import (
 	"log"
 	"strings"
 
-	. "github.com/cloudogu/ces-confd/confd"
+	"github.com/cloudogu/ces-confd/confd"
 	"github.com/coreos/etcd/client"
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 )
 
+// Configuration for warp menu creation
 type Configuration struct {
 	Sources []Source
 	Target  string
-	Order   Order
+	Order   confd.Order
 }
 
+// Source in etcd
 type Source struct {
 	Path       string
 	SourceType string `yaml:"type"`
@@ -83,7 +85,7 @@ func isKeyNotFound(err error) bool {
 	return false
 }
 
-func unmarshalDogu(kapi client.KeysAPI, key string) (RawData, error) {
+func unmarshalDogu(kapi client.KeysAPI, key string) (confd.RawData, error) {
 	resp, err := kapi.Get(context.Background(), key+"/current", nil)
 	if err != nil {
 		// the dogu seems to be unregistered
@@ -99,7 +101,7 @@ func unmarshalDogu(kapi client.KeysAPI, key string) (RawData, error) {
 		return nil, errors.Wrapf(err, "failed to read version child from key %s", key)
 	}
 
-	dogu := RawData{}
+	dogu := confd.RawData{}
 	err = json.Unmarshal([]byte(resp.Node.Value), &dogu)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to unmarshall json from etcd")
@@ -108,12 +110,12 @@ func unmarshalDogu(kapi client.KeysAPI, key string) (RawData, error) {
 	return dogu, nil
 }
 
-func unmarshalExternal(kapi client.KeysAPI, key string) (RawData, error) {
+func unmarshalExternal(kapi client.KeysAPI, key string) (confd.RawData, error) {
 	resp, err := kapi.Get(context.Background(), key, nil)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to read key %s from etcd", key)
 	}
-	external := RawData{}
+	external := confd.RawData{}
 	err = json.Unmarshal([]byte(resp.Node.Value), &external)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to unmarshall json from etcd")
@@ -122,13 +124,13 @@ func unmarshalExternal(kapi client.KeysAPI, key string) (RawData, error) {
 	return external, nil
 }
 
-func createHref(dogu RawData) string {
+func createHref(dogu confd.RawData) string {
 	// remove namespace
 	parts := strings.Split(dogu["Name"].(string), "/")
 	return "/" + parts[len(parts)-1]
 }
 
-func createDoguEntry(element RawData) Entry {
+func createDoguEntry(element confd.RawData) Entry {
 	return Entry{
 		DisplayName: element["DisplayName"].(string),
 		Href:        createHref(element),
@@ -137,7 +139,7 @@ func createDoguEntry(element RawData) Entry {
 	}
 }
 
-func createExternalEntry(element RawData) Entry {
+func createExternalEntry(element confd.RawData) Entry {
 	return Entry{
 		DisplayName: element["DisplayName"].(string),
 		Href:        element["URL"].(string),
@@ -146,12 +148,12 @@ func createExternalEntry(element RawData) Entry {
 	}
 }
 
-func filterByTag(dogus []RawData, tag string) []RawData {
-	filtered := []RawData{}
+func filterByTag(dogus []confd.RawData, tag string) []confd.RawData {
+	filtered := []confd.RawData{}
 	for _, raw := range dogus {
 		if raw["Tags"] != nil {
 			tags := raw["Tags"].([]interface{})
-			if tags != nil && Contains(tags, tag) {
+			if tags != nil && confd.Contains(tags, tag) {
 				filtered = append(filtered, raw)
 			}
 		}
@@ -159,20 +161,20 @@ func filterByTag(dogus []RawData, tag string) []RawData {
 	return filtered
 }
 
-func (destination *Categories) insertCategories(newCategories Categories) {
+func (categories *Categories) insertCategories(newCategories Categories) {
 	for _, newCategory := range newCategories {
-		destination.insertCategory(newCategory)
+		categories.insertCategory(newCategory)
 	}
 }
 
-func (destination *Categories) insertCategory(newCategory *Category) {
-	for _, category := range *destination {
+func (categories *Categories) insertCategory(newCategory *Category) {
+	for _, category := range *categories {
 		if category.Title == newCategory.Title {
 			category.Entries = append(category.Entries, newCategory.Entries...)
 			return
 		}
 	}
-	*destination = append(*destination, newCategory)
+	*categories = append(*categories, newCategory)
 }
 
 // JSONWriter converts the data to a json
@@ -194,8 +196,11 @@ func execute(configuration Configuration, kapi client.KeysAPI) {
 	if err != nil {
 		log.Println("Error durring read", err)
 	}
-	log.Printf("all found categories: %i", categories)
-	jsonWriter(configuration.Target, categories)
+	log.Printf("all found categories: %v", categories)
+	err = jsonWriter(configuration.Target, categories)
+	if err != nil {
+		log.Printf("failed to write warp menu as json: %v", err)
+	}
 }
 
 func watch(source Source, kapi client.KeysAPI, execChannel chan Source) {
@@ -214,6 +219,7 @@ func watch(source Source, kapi client.KeysAPI, execChannel chan Source) {
 	}
 }
 
+// Run creates the warp menu and update the menu whenever a relevant etcd key was changed
 func Run(configuration Configuration, kapi client.KeysAPI) {
 	execute(configuration, kapi)
 	log.Println("start watcher for warp entries")

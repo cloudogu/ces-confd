@@ -7,7 +7,7 @@ import (
 	"os"
 	"path"
 
-	. "github.com/cloudogu/ces-confd/confd"
+	"github.com/cloudogu/ces-confd/confd"
 	"github.com/coreos/etcd/client"
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
@@ -22,10 +22,12 @@ type Service struct {
 	URL  string
 }
 
+// Source of services path in etcd
 type Source struct {
 	Path string
 }
 
+// Configuration struct for the service part of ces-confd
 type Configuration struct {
 	Source      Source
 	Target      string
@@ -33,10 +35,10 @@ type Configuration struct {
 	Tag         string
 	PreCommand  string `yaml:"pre-command"`
 	PostCommand string `yaml:"post-command"`
-	Order       Order
+	Order       confd.Order
 }
 
-func createService(raw RawData) *Service {
+func createService(raw confd.RawData) *Service {
 	return &Service{
 		Name: raw["name"].(string),
 		URL:  "http://" + raw["service"].(string),
@@ -63,7 +65,7 @@ func convertToServices(kapi client.KeysAPI, tag string, key string) (Services, e
 }
 
 func convertToService(tag string, value string) (*Service, error) {
-	raw := RawData{}
+	raw := confd.RawData{}
 	err := json.Unmarshal([]byte(value), &raw)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to unmarshall service json")
@@ -72,7 +74,7 @@ func convertToService(tag string, value string) (*Service, error) {
 	if tag != "" {
 		if raw["tags"] != nil {
 			tags := raw["tags"].([]interface{})
-			if Contains(tags, tag) {
+			if confd.Contains(tags, tag) {
 				return createService(raw), err
 			}
 		} else {
@@ -142,7 +144,13 @@ func write(conf Configuration, data interface{}) error {
 	if err != nil {
 		return errors.Wrapf(err, "failed to create target file %s", conf.Target)
 	}
-	defer file.Close()
+
+	defer func() {
+		err := file.Close()
+		if err != nil {
+			log.Println("failed to close file")
+		}
+	}()
 
 	err = tmpl.Execute(file, data)
 	if err != nil {
@@ -158,7 +166,7 @@ func execute(conf Configuration, kapi client.KeysAPI) {
 	if err != nil {
 		log.Println("error durring read", err)
 	}
-	log.Printf("write services to template: %i", services)
+	log.Printf("write services to template: %v", services)
 
 	if err := templateWriter(conf, services); err != nil {
 		log.Printf("error on templateWriter: %s", err.Error())
@@ -181,6 +189,7 @@ func watch(conf Configuration, kapi client.KeysAPI) {
 	}
 }
 
+// Run creates the configuration for the services and updates the configuration whenever a service changed
 func Run(conf Configuration, kapi client.KeysAPI) {
 	execute(conf, kapi)
 	log.Println("start service watcher")
