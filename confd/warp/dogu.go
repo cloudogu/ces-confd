@@ -80,7 +80,7 @@ func mapDoguEntry(entry doguEntry) (EntryWithCategory, error) {
 		Entry: Entry{
 			DisplayName: displayName,
 			Title:       entry.Description,
-			Target:      "self",
+			Target:      TARGET_SELF,
 			Href:        createDoguHref(entry.Name),
 		},
 		Category: entry.Category,

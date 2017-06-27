@@ -59,6 +59,7 @@ func mapExternalEntry(entry externalEntry) (EntryWithCategory, error) {
 			DisplayName: entry.DisplayName,
 			Title:       entry.Description,
 			Href:        entry.URL,
+			Target:      TARGET_EXTERNAL,
 		},
 		Category: entry.Category,
 	}, nil
