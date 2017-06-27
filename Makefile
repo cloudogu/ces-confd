@@ -71,7 +71,7 @@ COMPILE_TARGET_DIR=target/dist/
 
 # make target files
 EXECUTABLE=target/dist/${ARTIFACT_ID}
-PACKAGE=target/dist/${ARTIFACT_ID}-${VERSION}.tar.gz
+PACKAGE=target/dist/${ARTIFACT_ID}-v${VERSION}.tar.gz
 XUNIT_XML=target/unit-tests.xml
 
 # tools
@@ -136,7 +136,7 @@ ${EXECUTABLE}: dependencies
 	@echo "... executable can be found at $@"
 
 ${PACKAGE}: ${EXECUTABLE}
-	cd ${COMPILE_TARGET_DIR} && tar cvzf ${ARTIFACT_ID}-${VERSION}.tar.gz ${ARTIFACT_ID}
+	cd ${COMPILE_TARGET_DIR} && tar cvzf ${ARTIFACT_ID}-v${VERSION}.tar.gz ${ARTIFACT_ID}
 
 build: ${PACKAGE}
 
