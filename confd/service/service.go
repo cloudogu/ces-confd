@@ -53,7 +53,7 @@ func convertToServices(kapi client.KeysAPI, tag string, key string) (Services, e
 
 	services := Services{}
 	for _, child := range resp.Node.Nodes {
-		service, err := convertToService(tag, child.Value)
+		service, err := ConvertToService(tag, child.Value)
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to convert node to service")
 		} else if service != nil {
@@ -64,7 +64,7 @@ func convertToServices(kapi client.KeysAPI, tag string, key string) (Services, e
 	return services, nil
 }
 
-func convertToService(tag string, value string) (*Service, error) {
+func ConvertToService(tag string, value string) (*Service, error) {
 	raw := confd.RawData{}
 	err := json.Unmarshal([]byte(value), &raw)
 	if err != nil {
