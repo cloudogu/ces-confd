@@ -11,6 +11,9 @@ import (
 	"github.com/coreos/etcd/client"
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
+  "strings"
+  "fmt"
+  "regexp"
 )
 
 // Services is a collection of service structs
@@ -38,13 +41,6 @@ type Configuration struct {
 	Order       confd.Order
 }
 
-func createService(raw confd.RawData) *Service {
-	return &Service{
-		Name: raw["name"].(string),
-		URL:  "http://" + raw["service"].(string),
-	}
-}
-
 func convertToServices(kapi client.KeysAPI, tag string, key string) (Services, error) {
 	resp, err := kapi.Get(context.Background(), key, nil)
 	if err != nil {
@@ -64,6 +60,7 @@ func convertToServices(kapi client.KeysAPI, tag string, key string) (Services, e
 	return services, nil
 }
 
+// ConvertToService converts a json into a service if it contains the passed tag
 func ConvertToService(tag string, value string) (*Service, error) {
 	raw := confd.RawData{}
 	err := json.Unmarshal([]byte(value), &raw)
@@ -72,16 +69,61 @@ func ConvertToService(tag string, value string) (*Service, error) {
 	}
 
 	if tag != "" {
-		if raw["tags"] != nil {
-			tags := raw["tags"].([]interface{})
-			if confd.Contains(tags, tag) {
-				return createService(raw), err
-			}
-		} else {
-			return createService(raw), err
-		}
-	}
+		return createServiceIfNecessary(raw, tag), nil
+	} else {
+    return createServiceFromRaw(raw), nil
+  }
 	return nil, nil
+}
+
+func createServiceIfNecessary(data map[string]interface{}, serviceTag string) (*Service) {
+  if data["tags"] != nil {
+    tags := data["tags"].([]interface{})
+    for _, sliceItem := range tags {
+      tag, castSuccessful := sliceItem.(string)
+      if !castSuccessful {
+        continue
+      }
+      if tag == serviceTag {
+        return createServiceFromRaw(data)
+      }
+      if strings.HasPrefix(tag, serviceTag) {
+        port, err := findPortInTag(tag, serviceTag)
+        if err != nil {
+          log.Println(err)
+          continue
+        }
+        if port == fmt.Sprintf("%v",data["port"]) {
+          name := strings.TrimSuffix(data["name"].(string), "-"+port)
+          address := data["service"].(string)
+          return createService(name, address)
+        }
+      }
+    }
+  }
+  return nil
+}
+
+func findPortInTag(tag string, tagPrefix string) (string, error) {
+  // searches for <port> in strings like 'webapp:port=<port>'
+  re := regexp.MustCompile("^"+tagPrefix+".*:port=([0-9]+).*$")
+  // returns array of first(and only) match of regex and the captured group
+  match := re.FindStringSubmatch(tag)
+  if len(match) <= 1 {
+    return "", errors.New("Could not find port in tag "+ tag)
+  }
+  return match[1], nil
+}
+
+func createServiceFromRaw(raw confd.RawData) *Service {
+  return createService(raw["name"].(string), raw["service"].(string))
+}
+
+func createService(name string, address string) *Service {
+  return &Service{
+    Name: name,
+    URL:  "http://" + address,
+  }
 }
 
 // serviceReader reads from etcd and converts the keys and value to service
