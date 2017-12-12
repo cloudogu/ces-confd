@@ -60,16 +60,16 @@ func convertToServices(kapi client.KeysAPI, tag string, key string) (Services, e
 	return services, nil
 }
 
-// ConvertToService converts a json into a service if it contains the passed tag
-func ConvertToService(tag string, value string) (*Service, error) {
+// ConvertToService converts a json into a service if it contains the passed serviceTag
+func ConvertToService(serviceTag string, value string) (*Service, error) {
 	raw := confd.RawData{}
 	err := json.Unmarshal([]byte(value), &raw)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to unmarshall service json")
 	}
 
-	if tag != "" {
-		return createServiceIfNecessary(raw, tag), nil
+	if serviceTag != "" {
+		return createServiceIfNecessary(raw, serviceTag), nil
 	} else {
     return createServiceFromRaw(raw), nil
   }
@@ -84,21 +84,28 @@ func createServiceIfNecessary(data map[string]interface{}, serviceTag string) (*
       if !castSuccessful {
         continue
       }
-      if tag == serviceTag {
-        return createServiceFromRaw(data)
+      service := checkForTag(tag, serviceTag, data)
+      if service != nil {
+        return service
       }
-      if strings.HasPrefix(tag, serviceTag) {
-        port, err := findPortInTag(tag, serviceTag)
-        if err != nil {
-          log.Println(err)
-          continue
-        }
-        if port == fmt.Sprintf("%v",data["port"]) {
-          name := strings.TrimSuffix(data["name"].(string), "-"+port)
-          address := data["service"].(string)
-          return createService(name, address)
-        }
-      }
+    }
+  }
+  return nil
+}
+func checkForTag(tag string, serviceTag string, data map[string]interface{} ) (*Service) {
+  if tag == serviceTag {
+    return createServiceFromRaw(data)
+  }
+  if strings.HasPrefix(tag, serviceTag) {
+    port, err := findPortInTag(tag, serviceTag)
+    if err != nil {
+      log.Println(err)
+      return nil
+    }
+    if port == fmt.Sprintf("%v",data["port"]) {
+      name := strings.TrimSuffix(data["name"].(string), "-"+port)
+      address := data["service"].(string)
+      return createService(name, address)
     }
   }
   return nil
