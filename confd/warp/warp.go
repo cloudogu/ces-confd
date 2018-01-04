@@ -32,6 +32,11 @@ type Category struct {
 	Entries Entries
 }
 
+// String returns the title of the category
+func (category Category) String() string {
+  return category.Title
+}
+
 // Categories collection of warp categories
 type Categories []*Category
 

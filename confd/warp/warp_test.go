@@ -5,7 +5,14 @@ import (
 	"testing"
 
 	"github.com/cloudogu/ces-confd/confd/warp"
+  "github.com/stretchr/testify/assert"
+  "fmt"
 )
+
+func TestCategoryString(t *testing.T) {
+  category := warp.Category{Title: "Hitchhiker"}
+  assert.Equal(t, "Hitchhiker", fmt.Sprintf("%v", category))
+}
 
 func TestTarget_MarshalJSON(t *testing.T) {
 	testMarshalJSON(t, warp.TARGET_EXTERNAL, "{\"Target\":\"external\"}")
