@@ -10,3 +10,11 @@ import:
   subpackages:
   - context
 - package: github.com/pkg/errors
+- package: github.com/satori/go.uuid
+  version: v1.1.0
+testImport:
+- package: github.com/stretchr/testify
+  version: v1.2.0
+  subpackages:
+  - assert
+  - require
