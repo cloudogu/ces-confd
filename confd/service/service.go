@@ -13,6 +13,8 @@ import (
 	"golang.org/x/net/context"
 )
 
+var modificationActions = []string{ "create", "delete", "update", "set" }
+
 // Services is a collection of service structs
 type Services []*Service
 
@@ -20,6 +22,11 @@ type Services []*Service
 type Service struct {
 	Name string
 	URL  string
+}
+
+// String returns a string representation of a service
+func (service *Service) String() string {
+  return "{name=" + service.Name + ", URL=" + service.URL + "}"
 }
 
 // Source of services path in etcd
@@ -39,9 +46,19 @@ type Configuration struct {
 }
 
 func createService(raw confd.RawData) *Service {
+  service := raw.GetStringValue("service")
+  if service == "" {
+    return nil
+  }
+
+  name := raw.GetStringValue("name")
+  if name == "" {
+    return nil
+  }
+
 	return &Service{
-		Name: raw["name"].(string),
-		URL:  "http://" + raw["service"].(string),
+		Name: name,
+		URL:  "http://" + service,
 	}
 }
 
@@ -71,17 +88,31 @@ func convertToService(tag string, value string) (*Service, error) {
 		return nil, errors.Wrap(err, "failed to unmarshall service json")
 	}
 
-	if tag != "" {
-		if raw["tags"] != nil {
-			tags := raw["tags"].([]interface{})
-			if confd.Contains(tags, tag) {
-				return createService(raw), err
-			}
-		} else {
-			return createService(raw), err
-		}
-	}
-	return nil, nil
+  if tag != "" {
+    exists, err := hasTag(raw, tag)
+    if err != nil {
+      return nil, err
+    }
+
+    if !exists {
+      return nil, nil
+    }
+  }
+  return createService(raw), nil
+}
+
+func hasTag(raw confd.RawData, tag string) (bool, error) {
+  tagsInterface, ok := raw["tags"]
+  if !ok {
+    return false, nil
+  }
+
+  tags, ok := tagsInterface.([]interface{})
+  if !ok {
+    return false, errors.New("tags must be an slice of strings")
+  }
+
+  return confd.Contains(tags, tag), nil
 }
 
 // serviceReader reads from etcd and converts the keys and value to service
@@ -159,9 +190,8 @@ func write(conf Configuration, data interface{}) error {
 	return nil
 }
 
-// naming
-func execute(conf Configuration, kapi client.KeysAPI) {
-	log.Println("read from etcd")
+func reloadServices(conf Configuration, kapi client.KeysAPI) {
+	log.Println("reload services from etcd")
 	services, err := readFromConfig(conf, kapi)
 	if err != nil {
 		log.Println("error durring read", err)
@@ -182,16 +212,73 @@ func watch(conf Configuration, kapi client.KeysAPI) {
 			// TODO: execute before watch start again? wait to reduce load, in case of unrecoverable error?
 			watch(conf, kapi)
 		} else {
-			action := resp.Action
-			log.Printf("%s changed, action=%s", resp.Node.Key, action)
-			execute(conf, kapi)
+		  changed, err := hasServiceChanged(conf, resp)
+		  if err != nil {
+		    log.Printf("failed to check if the change is responsible for a service: %v", err)
+        reloadServices(conf, kapi)
+      }
+
+      action := resp.Action
+      key := resp.Node.Key
+      if changed {
+        log.Printf("service %s changed, action=%s", key, action)
+        reloadServices(conf, kapi)
+      } else {
+        log.Printf("ignoring change to non service key %s with action %s", key, action)
+      }
 		}
 	}
 }
 
+func hasServiceChanged(conf Configuration, resp *client.Response) (bool, error) {
+  if ! isDirectory(resp.Node) && isModificationAction(resp.Action) {
+    return isServiceResponse(resp, conf.Tag)
+  }
+  return false, nil
+}
+
+func isServiceResponse(resp *client.Response, tag string) (bool, error) {
+  service, err := isServiceNode(resp.Node, tag)
+  if err != nil {
+    return false, err
+  }
+
+  if service {
+    return true, nil
+  }
+
+  service, err = isServiceNode(resp.PrevNode, tag)
+  if err != nil {
+    return false, err
+  }
+
+  if service {
+    return true, nil
+  }
+
+  return false, nil
+}
+
+func isDirectory(node *client.Node) bool {
+  return node.Dir
+}
+
+func isModificationAction(action string) bool {
+  return confd.ContainsString(modificationActions, action)
+}
+
+func isServiceNode(node *client.Node, tag string) (bool, error) {
+  service, err := convertToService(tag, node.Value)
+  if err != nil {
+    return false, errors.Wrapf(err, "failed to convert node to service")
+  }
+
+  return service != nil, nil
+}
+
 // Run creates the configuration for the services and updates the configuration whenever a service changed
 func Run(conf Configuration, kapi client.KeysAPI) {
-	execute(conf, kapi)
+	reloadServices(conf, kapi)
 	log.Println("start service watcher")
 	watch(conf, kapi)
 }
