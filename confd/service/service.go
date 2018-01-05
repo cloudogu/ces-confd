@@ -278,6 +278,14 @@ func isModificationAction(action string) bool {
 }
 
 func isServiceNode(node *client.Node, tag string) (bool, error) {
+  if node == nil {
+    return false, nil
+  }
+
+  if node.Value == "" {
+    return false, nil
+  }
+
   service, err := convertToService(tag, node.Value)
   if err != nil {
     return false, errors.Wrapf(err, "failed to convert node to service")

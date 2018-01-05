@@ -301,3 +301,19 @@ func TestHasServiceChangedSetNodeErrorButPreviousNodeIsFine(t *testing.T) {
   _, err := hasServiceChanged(conf, &response)
   require.NotNil(t, err)
 }
+
+func TestIsServiceNodeWithoutNode(t *testing.T) {
+  isService, err := isServiceNode(nil, "webapp")
+  require.Nil(t, err)
+  require.False(t, isService)
+}
+
+func TestIsServiceNodeWithoutValue(t *testing.T) {
+  node := &client.Node{
+    Dir: false,
+  }
+
+  isService, err := isServiceNode(node, "webapp")
+  require.Nil(t, err)
+  require.False(t, isService)
+}
