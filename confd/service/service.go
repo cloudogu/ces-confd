@@ -68,17 +68,22 @@ func convertToServices(kapi client.KeysAPI, tag string, key string) (Services, e
 		return nil, errors.Wrapf(err, "failed to read service key %s from etcd", key)
 	}
 
-	services := Services{}
-	for _, child := range resp.Node.Nodes {
-		service, err := convertToService(tag, child.Value)
-		if err != nil {
-			return nil, errors.Wrap(err, "failed to convert node to service")
-		} else if service != nil {
-			services = append(services, service)
-		}
-	}
+  return convertChildNodesToServices(resp.Node.Nodes, tag), nil
+}
 
-	return services, nil
+func convertChildNodesToServices(childNodes client.Nodes, tag string) Services {
+  services := Services{}
+  for _, child := range childNodes {
+    service, err := convertToService(tag, child.Value)
+    if err != nil {
+      // do not fail, if a single service contains an invalid entry
+      log.Printf("failed to convert node %s to service: %v", child.Key, err)
+    } else if service != nil {
+      services = append(services, service)
+    }
+  }
+
+  return services
 }
 
 func convertToService(tag string, value string) (*Service, error) {
@@ -125,9 +130,11 @@ func serviceReader(source Source, tag string, kapi client.KeysAPI) (interface{},
 
 	services := Services{}
 	for _, child := range resp.Node.Nodes {
+	  // convertToServices returns only an error, if the root key could not be read.
+	  // In this case we should return an too.
 		serviceEntries, err := convertToServices(kapi, tag, child.Key)
 		if err != nil {
-			return nil, errors.Wrap(err, "failed to convert node to service")
+			return nil, errors.Wrapf(err, "failed to convert node %s to service", child.Key)
 		}
 		for _, service := range serviceEntries {
 			services = append(services, service)
@@ -194,8 +201,10 @@ func reloadServices(conf Configuration, kapi client.KeysAPI) {
 	log.Println("reload services from etcd")
 	services, err := readFromConfig(conf, kapi)
 	if err != nil {
-		log.Println("error durring read", err)
+		log.Printf("failed to reload services: %v", err)
+		return
 	}
+
 	log.Printf("write services to template: %v", services)
 
 	if err := templateWriter(conf, services); err != nil {
@@ -216,6 +225,7 @@ func watch(conf Configuration, kapi client.KeysAPI) {
 		  if err != nil {
 		    log.Printf("failed to check if the change is responsible for a service: %v", err)
         reloadServices(conf, kapi)
+        continue
       }
 
       action := resp.Action

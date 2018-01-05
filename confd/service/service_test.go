@@ -62,6 +62,27 @@ func TestCreateServiceWithNonStringNameKey(t *testing.T) {
   require.Nil(t, service)
 }
 
+func TestConvertTotServicesShouldNotFailOnError(t *testing.T) {
+  heartOfGold := &client.Node{
+    Key: "/services/heartOfGold",
+    Value: "{\"name\": \"heartOfGold\", \"service\": \"8.8.8.8\", \"tags\": [\"webapp\"]}",
+  }
+
+  restaurantAtTheEndOfTheUniverse := &client.Node{
+    Key: "/services/restaurantAtTheEndOfTheUniverse",
+    Value: "{\"name\": \"restaurantAtTheEndOfTheUniverse\", \"service\": \"8.8.4.4\", \"tags\": [\"webapp\"]}",
+  }
+
+  invalidService := &client.Node{
+    Key: "/services/invalid",
+    Value: "{\"name\": \"invalid\", \"service\": \"8.8.4.4\", \"tags\": 42}",
+  }
+
+  childNodes := client.Nodes{ heartOfGold, restaurantAtTheEndOfTheUniverse, invalidService }
+  services := convertChildNodesToServices(childNodes, "webapp")
+  assert.Equal(t, 2, len(services))
+}
+
 func TestConvertToService(t *testing.T) {
   service, err := convertToService("webapp", "{\"name\": \"heartOfGold\", \"service\": \"8.8.8.8\", \"tags\": [\"webapp\"]}")
   require.Nil(t, err)
