@@ -26,7 +26,7 @@ type Service struct {
 	URL  string
 }
 
-type templateModel struct {
+type TemplateModel struct {
 	Maintenance string
 	Services    Services
 }
@@ -140,7 +140,7 @@ func createTemplateModel(source Source, tag string, kapi client.KeysAPI) (interf
 		return nil, errors.Wrapf(err, "Could not read service %s", source.Path)
 	}
 
-	return templateModel{resp.Node.Value, services}, nil
+	return TemplateModel{resp.Node.Value, services}, nil
 
 }
 

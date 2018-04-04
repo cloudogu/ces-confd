@@ -14,3 +14,8 @@ service:
   target: /etc/nginx/conf.d/app.conf
   template: /etc/ces-confd/templates/nginx.app.tpl
   tag: webapp
+maintenance:
+  source:
+    path: /config/_global/maintenance
+  target: /var/www/html/maintenance.html
+  template: /etc/ces-confd/templates/maintenance.tpl

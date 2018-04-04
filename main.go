@@ -10,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/cloudogu/ces-confd/confd/maintenance"
 	"github.com/cloudogu/ces-confd/confd/service"
 	"github.com/cloudogu/ces-confd/confd/warp"
 	"github.com/codegangsta/cli"
@@ -27,6 +28,7 @@ type Configuration struct {
 	Endpoint string
 	Warp     warp.Configuration
 	Service  service.Configuration
+	Maintenance maintenance.Configuration
 }
 
 // Application struct
@@ -77,6 +79,11 @@ func (app *Application) run(c *cli.Context) {
 
 	var syncWaitGroup sync.WaitGroup
 
+	syncWaitGroup.Add(1)
+	go func() {
+    maintenance.Run(app.Configuration.Maintenance, kapi)
+    syncWaitGroup.Done()
+  }()
 	syncWaitGroup.Add(1)
 	go func() {
 		warp.Run(app.Configuration.Warp, kapi)
