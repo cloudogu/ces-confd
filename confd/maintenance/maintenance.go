@@ -12,28 +12,28 @@ import (
 	"github.com/pkg/errors"
 )
 
-const MaintenanceModePath = "/config/_global/maintenance"
 
 type Source struct {
-	path string
+	Path string
+}
+
+type PageModel struct {
+  Title string `json:"title"`
+  Text  string `json:"text"`
+}
+
+func (p PageModel) String() string {
+  return p.Title + " " + p.Text
 }
 
 type Configuration struct {
 	Source   Source
 	Target   string
 	Template string
+	Default  PageModel
 }
 
-type PageModel struct {
-	Title string `json:"title"`
-	Text  string `json:"text"`
-}
-
-func (p PageModel) String() string {
-	return p.Title + " " + p.Text
-}
-
-func write(conf Configuration, data interface{}) error {
+func write(conf Configuration, pageModel PageModel) error {
 	name := path.Base(conf.Template)
 	tmpl, err := template.New(name).ParseFiles(conf.Template)
 	if err != nil {
@@ -52,17 +52,18 @@ func write(conf Configuration, data interface{}) error {
 		}
 	}()
 
-	err = tmpl.Execute(file, data)
+	err = tmpl.Execute(file, &pageModel)
 	if err != nil {
 		return errors.Wrap(err, "failed to render template")
 	}
 	return nil
 }
 
-func renderTemplate(conf Configuration, etcdJson string) error {
-	var pageModel PageModel
-	err := json.Unmarshal([]byte(etcdJson), &pageModel)
+func renderTemplate(conf Configuration, value string) error {
+  log.Println("render maintenance page:", value)
 
+	var pageModel PageModel
+	err := json.Unmarshal([]byte(value), &pageModel)
 	if err != nil {
 		return errors.Wrapf(err, "Could not parse JSON for maintenance page")
 	}
@@ -70,27 +71,49 @@ func renderTemplate(conf Configuration, etcdJson string) error {
 	return write(conf, pageModel)
 }
 
+func renderDefault(conf Configuration) {
+  log.Println("render default maintenance page")
+  err := write(conf, conf.Default)
+  if err != nil {
+    log.Printf("failed to write template with default: %v", err)
+  }
+}
+
+func readAndRender(conf Configuration, kapi client.KeysAPI) {
+  resp, err := kapi.Get(context.Background(), conf.Source.Path, nil)
+  if err != nil {
+    if client.IsKeyNotFound(err) {
+      renderDefault(conf)
+      return
+    }
+
+    log.Printf("failed to read key %s: %v", conf.Source.Path, err)
+    return
+  }
+
+  err = renderTemplate(conf, resp.Node.Value)
+  if err != nil {
+    log.Printf("failed to render template with model %s: %v", resp.Node.Value, err)
+  }
+}
+
 func watchForMaintenanceMode(conf Configuration, kapi client.KeysAPI) {
-	watcherOpts := client.WatcherOptions{AfterIndex: 0, Recursive: true}
-	watcher := kapi.Watcher(MaintenanceModePath, &watcherOpts)
+	watcherOpts := client.WatcherOptions{AfterIndex: 0, Recursive: false}
+	watcher := kapi.Watcher(conf.Source.Path, &watcherOpts)
 	for {
-		resp, err := watcher.Next(context.Background())
+		_, err := watcher.Next(context.Background())
 		if err != nil {
 			watchForMaintenanceMode(conf, kapi)
 		} else {
-			log.Println("Change in maintenance mode config: " + resp.Node.Value)
-			if resp.Node.Value != "" {
-				log.Println("Rendering maintenance mode template")
-				err = renderTemplate(conf, resp.Node.Value)
-				if err != nil {
-					log.Printf("Error rendering template: %v", err)
-				}
-			}
+			log.Println("Change in maintenance mode config")
+			readAndRender(conf, kapi)
 		}
 	}
 }
 
 func Run(conf Configuration, kapi client.KeysAPI) {
+  readAndRender(conf, kapi)
+
 	log.Println("Starting maintenance mode watcher...")
 	watchForMaintenanceMode(conf, kapi)
 }
