@@ -154,6 +154,7 @@ func execute(configuration Configuration, kapi client.KeysAPI) {
 	categories, err := reader.readFromConfig(configuration, kapi)
 	if err != nil {
 		log.Println("Error durring read", err)
+		return
 	}
 	log.Printf("all found categories: %v", categories)
 	err = jsonWriter(configuration.Target, categories)

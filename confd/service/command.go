@@ -96,6 +96,7 @@ func executePreCheckWithNewConfiguration(conf Configuration, data interface{}) e
 }
 
 func executePreCheck(conf Configuration, data interface{}) error {
+  log.Println(data)
   err := write(conf, data)
   if err != nil {
     return errors.Wrap(err, "failed to write to temp file for pre check")
