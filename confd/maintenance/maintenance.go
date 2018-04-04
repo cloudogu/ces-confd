@@ -12,11 +12,12 @@ import (
 	"github.com/pkg/errors"
 )
 
-
+// Source of maintenance path in etcd
 type Source struct {
 	Path string
 }
 
+// PageModel is the input to render the maintenance page template
 type PageModel struct {
   Title string `json:"title"`
   Text  string `json:"text"`
@@ -26,6 +27,7 @@ func (p PageModel) String() string {
   return p.Title + " " + p.Text
 }
 
+// Configuration for the maintenance modul
 type Configuration struct {
 	Source   Source
 	Target   string
@@ -111,6 +113,7 @@ func watchForMaintenanceMode(conf Configuration, kapi client.KeysAPI) {
 	}
 }
 
+// Run renders the maintenance page and watches for changes
 func Run(conf Configuration, kapi client.KeysAPI) {
   readAndRender(conf, kapi)
 

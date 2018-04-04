@@ -24,6 +24,7 @@ type Service struct {
 	URL  string
 }
 
+// TemplateModel is the input for the target template
 type TemplateModel struct {
 	Maintenance string
 	Services    Services
