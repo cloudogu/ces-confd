@@ -94,6 +94,7 @@ func (reader *ConfigReader) readSource(source Source) (Categories, error) {
 
 func (reader *ConfigReader) readFromConfig(configuration Configuration, kapi client.KeysAPI) (Categories, error) {
 	var data Categories
+	var etcdIndex uint64
 	for _, source := range configuration.Sources {
 		categories, err := reader.readSource(source)
 		if err != nil {

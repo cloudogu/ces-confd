@@ -163,16 +163,17 @@ func execute(configuration Configuration, kapi client.KeysAPI) {
 	}
 }
 
-func watch(source Source, kapi client.KeysAPI, execChannel chan Source) {
+func watch(source Source, kapi client.KeysAPI, etcdIndex uint64, execChannel chan Source) {
 	watcherOpts := client.WatcherOptions{AfterIndex: 0, Recursive: true}
 	watcher := kapi.Watcher(source.Path, &watcherOpts)
 	for {
 		resp, err := watcher.Next(context.Background())
 		if err != nil {
 			// TODO: execute before watch start again? wait to reduce load, in case of unrecoverable error?
-			watch(source, kapi, execChannel)
+			watch(source, kapi, etcdIndex, execChannel)
 		} else {
 			action := resp.Action
+			etcdIndex = resp.Index
 			log.Printf("%s changed, action=%s", resp.Node.Key, action)
 			execChannel <- source
 		}
@@ -185,7 +186,7 @@ func Run(configuration Configuration, kapi client.KeysAPI) {
 	log.Println("start watcher for warp entries")
 	execChannel := make(chan Source)
 	for _, source := range configuration.Sources {
-		go watch(source, kapi, execChannel)
+		go watch(source, kapi, 1, execChannel)
 	}
 
 	for range execChannel {
