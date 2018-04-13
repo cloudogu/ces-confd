@@ -130,20 +130,22 @@ func hasTag(raw confd.RawData, tag string) (bool, error) {
 func createTemplateModel(configuration Configuration, kapi client.KeysAPI) (*TemplateModel, uint64, error) {
 	maintenanceMode := ""
 	resp, err := kapi.Get(context.Background(), configuration.MaintenanceMode, nil)
+	etcdIndex := uint64(1)
 	if err != nil {
 		if !client.IsKeyNotFound(err) {
-			return nil, 0, errors.Wrapf(err, "could not determine state of maintenance mode")
+			return nil, etcdIndex, errors.Wrapf(err, "could not determine state of maintenance mode")
 		}
 	} else {
 		maintenanceMode = resp.Node.Value
+		etcdIndex = resp.Index
 	}
 
 	services, err := serviceReader(configuration.Source, configuration.Tag, kapi)
 	if err != nil {
-		return nil, 0, errors.Wrapf(err, "Could not read service %s", configuration.Source.Path)
+		return nil, etcdIndex, errors.Wrapf(err, "Could not read service %s", configuration.Source.Path)
 	}
 
-	return &TemplateModel{maintenanceMode, services}, resp.Index, nil
+	return &TemplateModel{maintenanceMode, services}, etcdIndex, nil
 }
 
 // serviceReader reads from etcd and converts the keys and value to service
@@ -224,7 +226,7 @@ func write(conf Configuration, data interface{}) error {
 
 func reloadServices(conf Configuration, kapi client.KeysAPI) uint64 {
 	log.Println("reload services from etcd")
-	services, etcIndex, err := readFromConfig(conf, kapi)
+	services, etcdIndex, err := readFromConfig(conf, kapi)
 	if err != nil {
 		log.Printf("failed to reload services: %v", err)
 		return 0
@@ -235,11 +237,11 @@ func reloadServices(conf Configuration, kapi client.KeysAPI) uint64 {
 	if err := templateWriter(conf, services); err != nil {
 		log.Printf("error on templateWriter: %s", err.Error())
 	}
-	return etcIndex
+	return etcdIndex
 }
 
-func watch(conf Configuration, kapi client.KeysAPI, etcdIndex *uint64, execChannel chan string) {
-	watcherOpts := client.WatcherOptions{AfterIndex: *etcdIndex, Recursive: true}
+func watch(conf Configuration, kapi client.KeysAPI, etcdIndex uint64, execChannel chan string) {
+	watcherOpts := client.WatcherOptions{AfterIndex: etcdIndex, Recursive: true}
 	watcher := kapi.Watcher(conf.Source.Path, &watcherOpts)
 	for {
 		resp, err := watcher.Next(context.Background())
@@ -264,7 +266,6 @@ func watch(conf Configuration, kapi client.KeysAPI, etcdIndex *uint64, execChann
 			} else {
 				log.Printf("ignoring change to non service key %s with action %s", key, action)
 			}
-			*etcdIndex = resp.Index
 		}
 	}
 }
@@ -323,8 +324,8 @@ func isServiceNode(node *client.Node, tag string) (bool, error) {
 	return service != nil, nil
 }
 
-func watchForMaintenanceMode(conf Configuration, kapi client.KeysAPI, etcdIndex *uint64, execChannel chan string) {
-	watcherOpts := client.WatcherOptions{AfterIndex: *etcdIndex, Recursive: false}
+func watchForMaintenanceMode(conf Configuration, kapi client.KeysAPI, etcdIndex uint64, execChannel chan string) {
+	watcherOpts := client.WatcherOptions{AfterIndex: etcdIndex, Recursive: false}
 	watcher := kapi.Watcher(conf.MaintenanceMode, &watcherOpts)
 	for {
 		resp, err := watcher.Next(context.Background())
@@ -335,7 +336,6 @@ func watchForMaintenanceMode(conf Configuration, kapi client.KeysAPI, etcdIndex 
 		} else {
 			log.Println("Change in maintenance mode config:", resp.Node.Value)
 			execChannel <- resp.Node.Key
-			*etcdIndex = resp.Index
 		}
 	}
 }
@@ -348,13 +348,13 @@ func Run(conf Configuration, kapi client.KeysAPI) {
 	execChannel := make(chan string)
 
 	log.Println("starting service watcher")
-	go watch(conf, kapi, &etcdIndex, execChannel)
+	go watch(conf, kapi, etcdIndex, execChannel)
 
 	log.Println("starting maintenance mode watcher")
-	go watchForMaintenanceMode(conf, kapi, &etcdIndex, execChannel)
+	go watchForMaintenanceMode(conf, kapi, etcdIndex, execChannel)
 
 	for key := range execChannel {
 		log.Printf("reloading services, because key %s has changed", key)
-		etcdIndex = reloadServices(conf, kapi)
+		reloadServices(conf, kapi)
 	}
 }
