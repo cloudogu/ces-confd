@@ -6,6 +6,7 @@ import (
 	"log"
 
 	"github.com/cloudogu/ces-confd/confd"
+	"github.com/cloudogu/ces-confd/confd/etcdUtil"
 	"github.com/coreos/etcd/client"
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
@@ -34,7 +35,7 @@ type Category struct {
 
 // String returns the title of the category
 func (category Category) String() string {
-  return category.Title
+	return category.Title
 }
 
 // Categories collection of warp categories
@@ -186,7 +187,8 @@ func Run(configuration Configuration, kapi client.KeysAPI) {
 	log.Println("start watcher for warp entries")
 	execChannel := make(chan Source)
 	for _, source := range configuration.Sources {
-		go watch(source, kapi, 1, execChannel)
+		etcdIndex, _ := etcdUtil.GetLastIndex(source.Path, kapi)
+		go watch(source, kapi, etcdIndex, execChannel)
 	}
 
 	for range execChannel {

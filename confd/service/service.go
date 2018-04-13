@@ -8,6 +8,7 @@ import (
 	"path"
 
 	"github.com/cloudogu/ces-confd/confd"
+	"github.com/cloudogu/ces-confd/confd/etcdUtil"
 	"github.com/coreos/etcd/client"
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
@@ -341,15 +342,16 @@ func watchForMaintenanceMode(conf Configuration, kapi client.KeysAPI, etcdIndex 
 // Run creates the configuration for the services and updates the configuration whenever a service changed
 func Run(conf Configuration, kapi client.KeysAPI) {
 
-	reloadServices(conf, kapi)
+	etcdIndex, _ := etcdUtil.GetLastIndex(conf.Source.Path, kapi)
 
+	reloadServices(conf, kapi)
 	execChannel := make(chan string)
 
 	log.Println("starting service watcher")
-	go watch(conf, kapi, 1, execChannel)
+	go watch(conf, kapi, etcdIndex, execChannel)
 
 	log.Println("starting maintenance mode watcher")
-	go watchForMaintenanceMode(conf, kapi, 1, execChannel)
+	go watchForMaintenanceMode(conf, kapi, etcdIndex, execChannel)
 
 	for key := range execChannel {
 		log.Printf("reloading services, because key %s has changed", key)
