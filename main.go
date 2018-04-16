@@ -25,9 +25,9 @@ var (
 
 // Configuration main configuration object
 type Configuration struct {
-	Endpoint string
-	Warp     warp.Configuration
-	Service  service.Configuration
+	Endpoint    string
+	Warp        warp.Configuration
+	Service     service.Configuration
 	Maintenance maintenance.Configuration
 }
 
@@ -81,9 +81,9 @@ func (app *Application) run(c *cli.Context) {
 
 	syncWaitGroup.Add(1)
 	go func() {
-    maintenance.Run(app.Configuration.Maintenance, kapi)
-    syncWaitGroup.Done()
-  }()
+		maintenance.Run(app.Configuration.Maintenance, kapi)
+		syncWaitGroup.Done()
+	}()
 	syncWaitGroup.Add(1)
 	go func() {
 		warp.Run(app.Configuration.Warp, kapi)
