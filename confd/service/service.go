@@ -342,7 +342,11 @@ func watchForMaintenanceMode(conf Configuration, kapi client.KeysAPI, etcdIndex 
 // Run creates the configuration for the services and updates the configuration whenever a service changed
 func Run(conf Configuration, kapi client.KeysAPI) {
 
-	etcdIndex, _ := etcdUtil.GetLastIndex(conf.Source.Path, kapi)
+	etcdIndex, err := etcdUtil.GetLastIndex(conf.Source.Path, kapi)
+
+	if err != nil {
+		log.Printf("Could not get last index for %s: %v", conf.Source.Path, err)
+	}
 
 	reloadServices(conf, kapi)
 	execChannel := make(chan string)

@@ -183,11 +183,23 @@ func watch(source Source, kapi client.KeysAPI, etcdIndex uint64, execChannel cha
 
 // Run creates the warp menu and update the menu whenever a relevant etcd key was changed
 func Run(configuration Configuration, kapi client.KeysAPI) {
+	etcdIndices := make(map[Source]uint64)
+	for _, source := range configuration.Sources {
+		etcdIndex, err := etcdUtil.GetLastIndex(source.Path, kapi)
+
+		if err != nil {
+			log.Printf("Could not get last index for %s", source.Path)
+			etcdIndex = 1
+		}
+		etcdIndices[source] = etcdIndex
+	}
 	execute(configuration, kapi)
+
 	log.Println("start watcher for warp entries")
 	execChannel := make(chan Source)
+
 	for _, source := range configuration.Sources {
-		etcdIndex, _ := etcdUtil.GetLastIndex(source.Path, kapi)
+		etcdIndex := etcdIndices[source]
 		go watch(source, kapi, etcdIndex, execChannel)
 	}
 
