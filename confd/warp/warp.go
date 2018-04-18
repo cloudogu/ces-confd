@@ -165,7 +165,7 @@ func execute(configuration Configuration, kapi client.KeysAPI) {
 }
 
 func watch(source Source, kapi client.KeysAPI, etcdIndex uint64, execChannel chan Source) {
-	watcherOpts := client.WatcherOptions{AfterIndex: 0, Recursive: true}
+	watcherOpts := client.WatcherOptions{AfterIndex: etcdIndex, Recursive: true}
 	watcher := kapi.Watcher(source.Path, &watcherOpts)
 	for {
 		resp, err := watcher.Next(context.Background())

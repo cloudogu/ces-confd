@@ -8,6 +8,7 @@ import (
 	"os"
 	"path"
 
+	"github.com/cloudogu/ces-confd/confd/etcdUtil"
 	"github.com/coreos/etcd/client"
 	"github.com/pkg/errors"
 )
@@ -99,15 +100,16 @@ func readAndRender(conf Configuration, kapi client.KeysAPI) {
 	}
 }
 
-func watchForMaintenanceMode(conf Configuration, kapi client.KeysAPI) {
-	watcherOpts := client.WatcherOptions{AfterIndex: 0, Recursive: false}
+func watchForMaintenanceMode(conf Configuration, kapi client.KeysAPI, etcdIndex uint64) {
+	watcherOpts := client.WatcherOptions{AfterIndex: etcdIndex, Recursive: false}
 	watcher := kapi.Watcher(conf.Source.Path, &watcherOpts)
 	for {
-		_, err := watcher.Next(context.Background())
+		resp, err := watcher.Next(context.Background())
 		if err != nil {
-			watchForMaintenanceMode(conf, kapi)
+			watchForMaintenanceMode(conf, kapi, etcdIndex)
 		} else {
 			log.Println("Change in maintenance mode config")
+			etcdIndex = resp.Index
 			readAndRender(conf, kapi)
 		}
 	}
@@ -115,8 +117,15 @@ func watchForMaintenanceMode(conf Configuration, kapi client.KeysAPI) {
 
 // Run renders the maintenance page and watches for changes
 func Run(conf Configuration, kapi client.KeysAPI) {
+	etcdIndex, err := etcdUtil.GetLastIndex(conf.Source.Path, kapi)
+
+	if err != nil {
+		log.Printf("Could not get last index: %v", err)
+		etcdIndex = 1
+	}
+
 	readAndRender(conf, kapi)
 
 	log.Println("Starting maintenance mode watcher...")
-	watchForMaintenanceMode(conf, kapi)
+	watchForMaintenanceMode(conf, kapi, etcdIndex)
 }
