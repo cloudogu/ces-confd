@@ -13,5 +13,6 @@ func GetLastIndex(key string, kapi client.KeysAPI) (uint64, error) {
 	if err != nil {
 		return 1, errors.Wrap(err, "Could not get index")
 	}
+
 	return resp.Index, nil
 }

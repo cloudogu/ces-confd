@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/cloudogu/ces-confd/confd/maintenance"
+	"github.com/cloudogu/ces-confd/confd/registry"
 	"github.com/cloudogu/ces-confd/confd/service"
 	"github.com/cloudogu/ces-confd/confd/warp"
 	"github.com/codegangsta/cli"
@@ -52,6 +53,14 @@ func (app *Application) createEtcdClient() (client.KeysAPI, error) {
 	return client.NewKeysAPI(ec), nil
 }
 
+func (app *Application) createEtcdRegistry() (registry.Registry, error) {
+	cfg := registry.Config{
+		Endpoints: []string{app.Configuration.Endpoint},
+	}
+
+	return registry.NewRegistry(cfg)
+}
+
 func (app *Application) readConfiguration(path string) error {
 	data, err := ioutil.ReadFile(path)
 	if err != nil {
@@ -77,6 +86,11 @@ func (app *Application) run(c *cli.Context) {
 		log.Fatal(err)
 	}
 
+	registry, err := app.createEtcdRegistry()
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	var syncWaitGroup sync.WaitGroup
 
 	syncWaitGroup.Add(1)
@@ -91,7 +105,7 @@ func (app *Application) run(c *cli.Context) {
 	}()
 	syncWaitGroup.Add(1)
 	go func() {
-		service.Run(app.Configuration.Service, kapi)
+		service.Run(app.Configuration.Service, kapi, registry)
 		syncWaitGroup.Done()
 	}()
 

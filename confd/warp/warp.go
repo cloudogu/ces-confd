@@ -6,7 +6,6 @@ import (
 	"log"
 
 	"github.com/cloudogu/ces-confd/confd"
-	"github.com/cloudogu/ces-confd/confd/etcdUtil"
 	"github.com/coreos/etcd/client"
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
@@ -164,46 +163,37 @@ func execute(configuration Configuration, kapi client.KeysAPI) {
 	}
 }
 
-func watch(source Source, kapi client.KeysAPI, etcdIndex uint64, execChannel chan Source) {
-	watcherOpts := client.WatcherOptions{AfterIndex: etcdIndex, Recursive: true}
+func watch(source Source, kapi client.KeysAPI, execChannel chan Source) {
+	watcherOpts := client.WatcherOptions{AfterIndex: 0, Recursive: true}
 	watcher := kapi.Watcher(source.Path, &watcherOpts)
+
+	execChannel <- source
 	for {
 		resp, err := watcher.Next(context.Background())
 		if err != nil {
 			// TODO: execute before watch start again? wait to reduce load, in case of unrecoverable error?
-			watch(source, kapi, etcdIndex, execChannel)
-		} else {
-			action := resp.Action
-			etcdIndex = resp.Index
-			log.Printf("%s changed, action=%s", resp.Node.Key, action)
+			log.Printf("Error: %v - starting (another) watcher", err)
 			execChannel <- source
+			continue
 		}
+
+		action := resp.Action
+		log.Printf("%s changed, action=%s", resp.Node.Key, action)
+		execChannel <- source
 	}
 }
 
 // Run creates the warp menu and update the menu whenever a relevant etcd key was changed
 func Run(configuration Configuration, kapi client.KeysAPI) {
-	etcdIndices := make(map[Source]uint64)
-	for _, source := range configuration.Sources {
-		etcdIndex, err := etcdUtil.GetLastIndex(source.Path, kapi)
-
-		if err != nil {
-			log.Printf("Could not get last index for %s", source.Path)
-			etcdIndex = 1
-		}
-		etcdIndices[source] = etcdIndex
-	}
-	execute(configuration, kapi)
-
 	log.Println("start watcher for warp entries")
 	execChannel := make(chan Source)
 
 	for _, source := range configuration.Sources {
-		etcdIndex := etcdIndices[source]
-		go watch(source, kapi, etcdIndex, execChannel)
+		go watch(source, kapi, execChannel)
 	}
 
 	for range execChannel {
 		execute(configuration, kapi)
 	}
+
 }

@@ -121,7 +121,7 @@ func Run(conf Configuration, kapi client.KeysAPI) {
 
 	if err != nil {
 		log.Printf("Could not get last index: %v", err)
-		etcdIndex = 1
+		etcdIndex = 0
 	}
 
 	readAndRender(conf, kapi)

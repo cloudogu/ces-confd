@@ -7,8 +7,9 @@ import (
 	"os"
 	"path"
 
+	configRegistry "github.com/cloudogu/ces-confd/confd/registry"
+
 	"github.com/cloudogu/ces-confd/confd"
-	"github.com/cloudogu/ces-confd/confd/etcdUtil"
 	"github.com/coreos/etcd/client"
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
@@ -70,8 +71,9 @@ func createService(raw confd.RawData) *Service {
 	}
 }
 
-func convertToServices(kapi client.KeysAPI, tag string, key string) (Services, error) {
-	resp, err := kapi.Get(context.Background(), key, nil)
+func convertToServices(registry configRegistry.Registry, tag string, key string) (Services, error) {
+	//	resp, err := kapi.Get(context.Background(), key, nil)
+	resp, err := registry.Get(key)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to read service key %s from etcd", key)
 	}
@@ -128,9 +130,9 @@ func hasTag(raw confd.RawData, tag string) (bool, error) {
 	return confd.Contains(tags, tag), nil
 }
 
-func createTemplateModel(configuration Configuration, kapi client.KeysAPI) (*TemplateModel, error) {
+func createTemplateModel(configuration Configuration, registry configRegistry.Registry) (*TemplateModel, error) {
 	maintenanceMode := ""
-	resp, err := kapi.Get(context.Background(), configuration.MaintenanceMode, nil)
+	resp, err := registry.Get(configuration.Source.Path)
 	if err != nil {
 		if !client.IsKeyNotFound(err) {
 			return nil, errors.Wrapf(err, "could not determine state of maintenance mode")
@@ -139,7 +141,7 @@ func createTemplateModel(configuration Configuration, kapi client.KeysAPI) (*Tem
 		maintenanceMode = resp.Node.Value
 	}
 
-	services, err := serviceReader(configuration.Source, configuration.Tag, kapi)
+	services, err := serviceReader(configuration.Source, configuration.Tag, registry)
 	if err != nil {
 		return nil, errors.Wrapf(err, "Could not read service %s", configuration.Source.Path)
 	}
@@ -149,8 +151,8 @@ func createTemplateModel(configuration Configuration, kapi client.KeysAPI) (*Tem
 
 // serviceReader reads from etcd and converts the keys and value to service
 // struct, which can easily used for configuration templates
-func serviceReader(source Source, tag string, kapi client.KeysAPI) (Services, error) {
-	resp, err := kapi.Get(context.Background(), source.Path, nil)
+func serviceReader(source Source, tag string, registry configRegistry.Registry) (Services, error) {
+	resp, err := registry.Get(source.Path)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to read root %s from etcd", source.Path)
 	}
@@ -159,7 +161,7 @@ func serviceReader(source Source, tag string, kapi client.KeysAPI) (Services, er
 	for _, child := range resp.Node.Nodes {
 		// convertToServices returns only an error, if the root key could not be read.
 		// In this case we should return an too.
-		serviceEntries, err := convertToServices(kapi, tag, child.Key)
+		serviceEntries, err := convertToServices(registry, tag, child.Key)
 		if err != nil {
 			return nil, errors.Wrapf(err, "failed to convert node %s to service", child.Key)
 		}
@@ -170,8 +172,8 @@ func serviceReader(source Source, tag string, kapi client.KeysAPI) (Services, er
 	return services, nil
 }
 
-func readFromConfig(configuration Configuration, kapi client.KeysAPI) (interface{}, error) {
-	return createTemplateModel(configuration, kapi)
+func readFromConfig(configuration Configuration, registry configRegistry.Registry) (interface{}, error) {
+	return createTemplateModel(configuration, registry)
 }
 
 // templateWriter transform the data with a golang template
@@ -223,9 +225,9 @@ func write(conf Configuration, data interface{}) error {
 	return nil
 }
 
-func reloadServices(conf Configuration, kapi client.KeysAPI) {
+func reloadServices(conf Configuration, registry configRegistry.Registry) {
 	log.Println("reload services from etcd")
-	services, err := readFromConfig(conf, kapi)
+	services, err := readFromConfig(conf, registry)
 	if err != nil {
 		log.Printf("failed to reload services: %v", err)
 	}
@@ -340,25 +342,19 @@ func watchForMaintenanceMode(conf Configuration, kapi client.KeysAPI, etcdIndex 
 }
 
 // Run creates the configuration for the services and updates the configuration whenever a service changed
-func Run(conf Configuration, kapi client.KeysAPI) {
+func Run(conf Configuration, kapi client.KeysAPI, registry configRegistry.Registry) {
 
-	etcdIndex, err := etcdUtil.GetLastIndex(conf.Source.Path, kapi)
-
-	if err != nil {
-		log.Printf("Could not get last index for %s: %v", conf.Source.Path, err)
-	}
-
-	reloadServices(conf, kapi)
+	reloadServices(conf, registry)
 	execChannel := make(chan string)
 
 	log.Println("starting service watcher")
-	go watch(conf, kapi, etcdIndex, execChannel)
+	go watch(conf, kapi, 0, execChannel)
 
 	log.Println("starting maintenance mode watcher")
-	go watchForMaintenanceMode(conf, kapi, etcdIndex, execChannel)
+	go watchForMaintenanceMode(conf, kapi, 0, execChannel)
 
 	for key := range execChannel {
 		log.Printf("reloading services, because key %s has changed", key)
-		reloadServices(conf, kapi)
+		reloadServices(conf, registry)
 	}
 }
