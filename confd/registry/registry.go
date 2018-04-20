@@ -15,7 +15,6 @@ type Event struct {
 
 // Registry manages a config registry (e.g. etcd)
 type Registry interface {
-	//NewRegistry(config Config) (*Registry, error)
 	Get(key string) (*client.Response, error)
 	Watch(key string, recursive bool, eventChannel chan *client.Response)
 }

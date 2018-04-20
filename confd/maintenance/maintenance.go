@@ -101,13 +101,18 @@ func readAndRender(conf Configuration, registry confRegistry.Registry) {
 
 // Run renders the maintenance page and watches for changes
 func Run(conf Configuration, registry confRegistry.Registry) {
-	readAndRender(conf, registry)
-	maintenanceChannel := make(chan *client.Response)
 
-	registry.Watch(conf.Source.Path, false, maintenanceChannel)
+	updateChannel := make(chan *client.Response)
+
+	go func() {
+		for {
+			readAndRender(conf, registry)
+			registry.Watch(conf.Source.Path, false, updateChannel)
+		}
+	}()
 
 	for {
-		<-maintenanceChannel
+		<-updateChannel
 		readAndRender(conf, registry)
 	}
 }

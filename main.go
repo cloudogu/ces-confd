@@ -58,7 +58,7 @@ func (app *Application) createEtcdRegistry() (registry.Registry, error) {
 		Endpoints: []string{app.Configuration.Endpoint},
 	}
 
-	return registry.NewRegistry(cfg)
+	return registry.NewEtcdRegistry(cfg)
 }
 
 func (app *Application) readConfiguration(path string) error {
@@ -80,11 +80,6 @@ func (app *Application) run(c *cli.Context) {
 	if err != nil {
 		log.Fatal(err)
 	}
-
-	//	kapi, err := app.createEtcdClient()
-	//	if err != nil {
-	//		log.Fatal(err)
-	//	}
 
 	r1, err := app.createEtcdRegistry()
 	if err != nil {

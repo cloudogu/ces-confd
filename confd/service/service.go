@@ -71,7 +71,6 @@ func createService(raw confd.RawData) *Service {
 }
 
 func convertToServices(registry configRegistry.Registry, tag string, key string) (Services, error) {
-	//	resp, err := kapi.Get(context.Background(), key, nil)
 	resp, err := registry.Get(key)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to read service key %s from etcd", key)
@@ -288,7 +287,7 @@ func isServiceNode(node *client.Node, tag string) (bool, error) {
 
 	service, err := convertToService(tag, node.Value)
 	if err != nil {
-		return false, errors.Wrapf(err, "failed to convert node to service")
+		return false, errors.Wrap(err, "failed to convert node to service")
 	}
 
 	return service != nil, nil
@@ -315,14 +314,24 @@ func reloadServicesIfNecessary(resp *client.Response, conf Configuration, regist
 // Run creates the configuration for the services and updates the configuration whenever a service changed
 func Run(conf Configuration, registry configRegistry.Registry) {
 
-	reloadServices(conf, registry)
 	serviceChannel := make(chan *client.Response)
 	maintenanceChannel := make(chan *client.Response)
 
 	log.Println("starting service watcher")
-	registry.Watch(conf.Source.Path, true, serviceChannel)
+	go func() {
+		for {
+			reloadServices(conf, registry)
+			registry.Watch(conf.Source.Path, true, serviceChannel)
+		}
+	}()
 	log.Println("starting maintenance mode watcher")
-	registry.Watch(conf.MaintenanceMode, false, maintenanceChannel)
+
+	go func() {
+		for {
+			reloadServices(conf, registry)
+			registry.Watch(conf.MaintenanceMode, false, maintenanceChannel)
+		}
+	}()
 	for {
 		select {
 		case <-maintenanceChannel:

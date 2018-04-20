@@ -165,12 +165,18 @@ func execute(configuration Configuration, registry registry.Registry) {
 
 // Run creates the warp menu and update the menu whenever a relevant etcd key was changed
 func Run(configuration Configuration, registry registry.Registry) {
-	execute(configuration, registry)
+
 	log.Println("start watcher for warp entries")
 	warpChannel := make(chan *client.Response)
 
 	for _, source := range configuration.Sources {
-		registry.Watch(source.Path, true, warpChannel)
+
+		go func(source Source) {
+			for {
+				execute(configuration, registry)
+				registry.Watch(source.Path, true, warpChannel)
+			}
+		}(source)
 	}
 
 	for range warpChannel {
