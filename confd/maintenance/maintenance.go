@@ -1,14 +1,13 @@
 package maintenance
 
 import (
-	"context"
 	"encoding/json"
 	"html/template"
 	"log"
 	"os"
 	"path"
 
-	"github.com/cloudogu/ces-confd/confd/etcdUtil"
+	confRegistry "github.com/cloudogu/ces-confd/confd/registry"
 	"github.com/coreos/etcd/client"
 	"github.com/pkg/errors"
 )
@@ -82,8 +81,8 @@ func renderDefault(conf Configuration) {
 	}
 }
 
-func readAndRender(conf Configuration, kapi client.KeysAPI) {
-	resp, err := kapi.Get(context.Background(), conf.Source.Path, nil)
+func readAndRender(conf Configuration, registry confRegistry.Registry) {
+	resp, err := registry.Get(conf.Source.Path)
 	if err != nil {
 		if client.IsKeyNotFound(err) {
 			renderDefault(conf)
@@ -100,32 +99,15 @@ func readAndRender(conf Configuration, kapi client.KeysAPI) {
 	}
 }
 
-func watchForMaintenanceMode(conf Configuration, kapi client.KeysAPI, etcdIndex uint64) {
-	watcherOpts := client.WatcherOptions{AfterIndex: etcdIndex, Recursive: false}
-	watcher := kapi.Watcher(conf.Source.Path, &watcherOpts)
-	for {
-		resp, err := watcher.Next(context.Background())
-		if err != nil {
-			watchForMaintenanceMode(conf, kapi, etcdIndex)
-		} else {
-			log.Println("Change in maintenance mode config")
-			etcdIndex = resp.Index
-			readAndRender(conf, kapi)
-		}
-	}
-}
-
 // Run renders the maintenance page and watches for changes
-func Run(conf Configuration, kapi client.KeysAPI) {
-	etcdIndex, err := etcdUtil.GetLastIndex(conf.Source.Path, kapi)
+func Run(conf Configuration, registry confRegistry.Registry) {
+	readAndRender(conf, registry)
+	maintenanceChannel := make(chan *client.Response)
 
-	if err != nil {
-		log.Printf("Could not get last index: %v", err)
-		etcdIndex = 0
+	registry.Watch(conf.Source.Path, false, maintenanceChannel)
+
+	for {
+		<-maintenanceChannel
+		readAndRender(conf, registry)
 	}
-
-	readAndRender(conf, kapi)
-
-	log.Println("Starting maintenance mode watcher...")
-	watchForMaintenanceMode(conf, kapi, etcdIndex)
 }

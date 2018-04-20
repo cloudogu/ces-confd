@@ -81,12 +81,22 @@ func (app *Application) run(c *cli.Context) {
 		log.Fatal(err)
 	}
 
-	kapi, err := app.createEtcdClient()
+	//	kapi, err := app.createEtcdClient()
+	//	if err != nil {
+	//		log.Fatal(err)
+	//	}
+
+	r1, err := app.createEtcdRegistry()
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	registry, err := app.createEtcdRegistry()
+	r2, err := app.createEtcdRegistry()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	r3, err := app.createEtcdRegistry()
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -95,17 +105,17 @@ func (app *Application) run(c *cli.Context) {
 
 	syncWaitGroup.Add(1)
 	go func() {
-		maintenance.Run(app.Configuration.Maintenance, kapi)
+		maintenance.Run(app.Configuration.Maintenance, r1)
 		syncWaitGroup.Done()
 	}()
 	syncWaitGroup.Add(1)
 	go func() {
-		warp.Run(app.Configuration.Warp, kapi)
+		warp.Run(app.Configuration.Warp, r2)
 		syncWaitGroup.Done()
 	}()
 	syncWaitGroup.Add(1)
 	go func() {
-		service.Run(app.Configuration.Service, kapi, registry)
+		service.Run(app.Configuration.Service, r3)
 		syncWaitGroup.Done()
 	}()
 

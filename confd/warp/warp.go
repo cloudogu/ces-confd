@@ -6,9 +6,9 @@ import (
 	"log"
 
 	"github.com/cloudogu/ces-confd/confd"
+	"github.com/cloudogu/ces-confd/confd/registry"
 	"github.com/coreos/etcd/client"
 	"github.com/pkg/errors"
-	"golang.org/x/net/context"
 )
 
 // Configuration for warp menu creation
@@ -146,12 +146,12 @@ func jsonWriter(target string, data interface{}) error {
 	return ioutil.WriteFile(target, bytes, 0755)
 }
 
-func execute(configuration Configuration, kapi client.KeysAPI) {
+func execute(configuration Configuration, registry registry.Registry) {
 	reader := ConfigReader{
-		kapi:          kapi,
+		registry:      registry,
 		configuration: configuration,
 	}
-	categories, err := reader.readFromConfig(configuration, kapi)
+	categories, err := reader.readFromConfig(configuration)
 	if err != nil {
 		log.Println("Error durring read", err)
 		return
@@ -163,37 +163,18 @@ func execute(configuration Configuration, kapi client.KeysAPI) {
 	}
 }
 
-func watch(source Source, kapi client.KeysAPI, execChannel chan Source) {
-	watcherOpts := client.WatcherOptions{AfterIndex: 0, Recursive: true}
-	watcher := kapi.Watcher(source.Path, &watcherOpts)
-
-	execChannel <- source
-	for {
-		resp, err := watcher.Next(context.Background())
-		if err != nil {
-			// TODO: execute before watch start again? wait to reduce load, in case of unrecoverable error?
-			log.Printf("Error: %v - starting (another) watcher", err)
-			execChannel <- source
-			continue
-		}
-
-		action := resp.Action
-		log.Printf("%s changed, action=%s", resp.Node.Key, action)
-		execChannel <- source
-	}
-}
-
 // Run creates the warp menu and update the menu whenever a relevant etcd key was changed
-func Run(configuration Configuration, kapi client.KeysAPI) {
+func Run(configuration Configuration, registry registry.Registry) {
+	execute(configuration, registry)
 	log.Println("start watcher for warp entries")
-	execChannel := make(chan Source)
+	warpChannel := make(chan *client.Response)
 
 	for _, source := range configuration.Sources {
-		go watch(source, kapi, execChannel)
+		registry.Watch(source.Path, true, warpChannel)
 	}
 
-	for range execChannel {
-		execute(configuration, kapi)
+	for range warpChannel {
+		execute(configuration, registry)
 	}
 
 }

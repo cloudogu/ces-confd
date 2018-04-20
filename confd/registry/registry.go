@@ -17,5 +17,5 @@ type Event struct {
 type Registry interface {
 	//NewRegistry(config Config) (*Registry, error)
 	Get(key string) (*client.Response, error)
-	Watch(key string, eventChannel chan Event)
+	Watch(key string, recursive bool, eventChannel chan *client.Response)
 }

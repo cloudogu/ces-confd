@@ -1,13 +1,12 @@
 package warp
 
 import (
-	"context"
 	"encoding/json"
 
 	"strings"
 
 	"github.com/cloudogu/ces-confd/confd"
-	"github.com/coreos/etcd/client"
+	"github.com/cloudogu/ces-confd/confd/registry"
 	"github.com/pkg/errors"
 )
 
@@ -19,8 +18,8 @@ type doguEntry struct {
 	Tags        []string
 }
 
-func readAndUnmarshalDogu(kapi client.KeysAPI, key string, tag string) (EntryWithCategory, error) {
-	doguBytes, err := readDoguAsBytes(kapi, key)
+func readAndUnmarshalDogu(registry registry.Registry, key string, tag string) (EntryWithCategory, error) {
+	doguBytes, err := readDoguAsBytes(registry, key)
 	if err != nil {
 		return EntryWithCategory{}, err
 	}
@@ -38,8 +37,8 @@ func readAndUnmarshalDogu(kapi client.KeysAPI, key string, tag string) (EntryWit
 	return EntryWithCategory{}, nil
 }
 
-func readDoguAsBytes(kapi client.KeysAPI, key string) ([]byte, error) {
-	resp, err := kapi.Get(context.Background(), key+"/current", nil)
+func readDoguAsBytes(registry registry.Registry, key string) ([]byte, error) {
+	resp, err := registry.Get(key + "/current")
 	if err != nil {
 		// the dogu seems to be unregistered
 		if isKeyNotFound(err) {
@@ -49,7 +48,7 @@ func readDoguAsBytes(kapi client.KeysAPI, key string) ([]byte, error) {
 	}
 
 	version := resp.Node.Value
-	resp, err = kapi.Get(context.Background(), key+"/"+version, nil)
+	resp, err = registry.Get(key + "/" + version)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to read version child from key %s", key)
 	}

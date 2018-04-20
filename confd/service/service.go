@@ -12,7 +12,6 @@ import (
 	"github.com/cloudogu/ces-confd/confd"
 	"github.com/coreos/etcd/client"
 	"github.com/pkg/errors"
-	"golang.org/x/net/context"
 )
 
 var modificationActions = []string{"create", "delete", "update", "set"}
@@ -132,12 +131,14 @@ func hasTag(raw confd.RawData, tag string) (bool, error) {
 
 func createTemplateModel(configuration Configuration, registry configRegistry.Registry) (*TemplateModel, error) {
 	maintenanceMode := ""
-	resp, err := registry.Get(configuration.Source.Path)
+	resp, err := registry.Get(configuration.MaintenanceMode)
+
 	if err != nil {
 		if !client.IsKeyNotFound(err) {
 			return nil, errors.Wrapf(err, "could not determine state of maintenance mode")
 		}
 	} else {
+		log.Printf("Maintenance mode resp: %v", resp)
 		maintenanceMode = resp.Node.Value
 	}
 
@@ -239,37 +240,6 @@ func reloadServices(conf Configuration, registry configRegistry.Registry) {
 	}
 }
 
-func watch(conf Configuration, kapi client.KeysAPI, etcdIndex uint64, execChannel chan string) {
-	watcherOpts := client.WatcherOptions{AfterIndex: etcdIndex, Recursive: true}
-	watcher := kapi.Watcher(conf.Source.Path, &watcherOpts)
-	for {
-		resp, err := watcher.Next(context.Background())
-		if err != nil {
-			// TODO: execute before watch start again? wait to reduce load, in case of unrecoverable error?
-			// TODO: is recursive required? continue? do nothing?
-			watch(conf, kapi, etcdIndex, execChannel)
-		} else {
-			key := resp.Node.Key
-
-			changed, err := hasServiceChanged(conf, resp)
-			if err != nil {
-				log.Printf("failed to check if the change is responsible for a service: %v", err)
-				execChannel <- key
-				continue
-			}
-
-			action := resp.Action
-			etcdIndex = resp.Index
-			if changed {
-				log.Printf("service %s changed, action=%s", key, action)
-				execChannel <- key
-			} else {
-				log.Printf("ignoring change to non service key %s with action %s", key, action)
-			}
-		}
-	}
-}
-
 func hasServiceChanged(conf Configuration, resp *client.Response) (bool, error) {
 	if !isDirectory(resp.Node) && isModificationAction(resp.Action) {
 		return isServiceResponse(resp, conf.Tag)
@@ -324,37 +294,41 @@ func isServiceNode(node *client.Node, tag string) (bool, error) {
 	return service != nil, nil
 }
 
-func watchForMaintenanceMode(conf Configuration, kapi client.KeysAPI, etcdIndex uint64, execChannel chan string) {
-	watcherOpts := client.WatcherOptions{AfterIndex: etcdIndex, Recursive: false}
-	watcher := kapi.Watcher(conf.MaintenanceMode, &watcherOpts)
-	for {
-		resp, err := watcher.Next(context.Background())
-		if err != nil {
-			// TODO: execute before watch start again? wait to reduce load, in case of unrecoverable error?
-			// TODO: is recursive required? continue? do nothing?
-			watchForMaintenanceMode(conf, kapi, etcdIndex, execChannel)
-		} else {
-			log.Println("Change in maintenance mode config:", resp.Node.Value)
-			etcdIndex = resp.Index
-			execChannel <- resp.Node.Key
-		}
+func reloadServicesIfNecessary(resp *client.Response, conf Configuration, registry configRegistry.Registry) {
+	key := resp.Node.Key
+	changed, err := hasServiceChanged(conf, resp)
+	if err != nil {
+		log.Printf("failed to check if the change is responsible for a service: %v", err)
+		reloadServices(conf, registry)
+	}
+
+	action := resp.Action
+
+	if changed {
+		log.Printf("service %s changed, action=%s", key, action)
+		reloadServices(conf, registry)
+	} else {
+		log.Printf("ignoring change to non service key %s with action %s", key, action)
 	}
 }
 
 // Run creates the configuration for the services and updates the configuration whenever a service changed
-func Run(conf Configuration, kapi client.KeysAPI, registry configRegistry.Registry) {
+func Run(conf Configuration, registry configRegistry.Registry) {
 
 	reloadServices(conf, registry)
-	execChannel := make(chan string)
+	serviceChannel := make(chan *client.Response)
+	maintenanceChannel := make(chan *client.Response)
 
 	log.Println("starting service watcher")
-	go watch(conf, kapi, 0, execChannel)
-
+	registry.Watch(conf.Source.Path, true, serviceChannel)
 	log.Println("starting maintenance mode watcher")
-	go watchForMaintenanceMode(conf, kapi, 0, execChannel)
-
-	for key := range execChannel {
-		log.Printf("reloading services, because key %s has changed", key)
-		reloadServices(conf, registry)
+	registry.Watch(conf.MaintenanceMode, false, maintenanceChannel)
+	for {
+		select {
+		case <-maintenanceChannel:
+			reloadServices(conf, registry)
+		case resp := <-serviceChannel:
+			reloadServicesIfNecessary(resp, conf, registry)
+		}
 	}
 }

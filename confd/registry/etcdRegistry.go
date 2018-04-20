@@ -41,8 +41,8 @@ func (r EtcdRegistry) Get(key string) (*client.Response, error) {
 }
 
 // Watch watches for changes of the provided key and sends the event through the channel
-func (r EtcdRegistry) Watch(key string, eventChannel chan Event) {
-	options := client.WatcherOptions{AfterIndex: r.recentIndex, Recursive: false}
+func (r EtcdRegistry) Watch(key string, recursive bool, eventChannel chan *client.Response) {
+	options := client.WatcherOptions{AfterIndex: r.recentIndex, Recursive: recursive}
 	watcher := r.keysAPI.Watcher(key, &options)
 
 	go func() {
@@ -51,12 +51,12 @@ func (r EtcdRegistry) Watch(key string, eventChannel chan Event) {
 
 			if err != nil {
 				log.Printf("Could not get event: %v", err)
-				r.Watch(key, eventChannel)
+				r.Watch(key, recursive, eventChannel)
 				return
 			}
 
-			event := Event{Action: resp.Action, Value: resp.Node.Value}
-			eventChannel <- event
+			//			event := Event{Action: resp.Action, Value: resp.Node.Value}
+			eventChannel <- resp
 			r.recentIndex = resp.Index
 		}
 	}()
