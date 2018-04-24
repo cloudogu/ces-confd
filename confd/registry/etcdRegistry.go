@@ -44,13 +44,20 @@ func (r *EtcdRegistry) Get(key string) (*client.Response, error) {
 	return resp, nil
 }
 
+// We only update the recent index iff it is 0; which happens only in 2 cases:
+// 1. At startup
+// 2. In case of an error during watch
+// We do this, to not miss any changes made to etcd between
+// 1. Startup and starting the watcher
+// 2. An error and the restart of the watcher
 func (r *EtcdRegistry) updateIndexIfNecessary(index uint64) {
 	if r.recentIndex == 0 {
 		r.indexMutex.Lock()
+		defer r.indexMutex.Unlock()
 		if r.recentIndex == 0 {
 			r.recentIndex = index
 		}
-		r.indexMutex.Unlock()
+
 	}
 }
 
@@ -65,8 +72,8 @@ func (r *EtcdRegistry) Watch(key string, recursive bool, eventChannel chan *clie
 		if err != nil {
 			log.Printf("Could not get event: %v", err)
 			r.indexMutex.Lock()
+			defer r.indexMutex.Unlock()
 			r.recentIndex = 0
-			r.indexMutex.Unlock()
 			return
 		}
 
