@@ -24,8 +24,7 @@ func NewEtcdRegistry(config Config) (*EtcdRegistry, error) {
 	c, err := client.New(cfg)
 
 	if err != nil {
-		errors.Wrapf(err, "Could not create client: %v")
-		return nil, err
+		return nil, errors.Wrapf(err, "Could not create client:")
 	}
 	keysAPI := client.NewKeysAPI(c)
 	return &EtcdRegistry{keysAPI: keysAPI, recentIndex: 0}, nil
@@ -36,8 +35,7 @@ func (r *EtcdRegistry) Get(key string) (*client.Response, error) {
 	resp, err := r.keysAPI.Get(context.Background(), key, nil)
 
 	if err != nil {
-		errors.Wrapf(err, "Error getting value for key %s:", key)
-		return resp, err
+		return nil, errors.Wrapf(err, "Error getting value for key %s:", key)
 	}
 
 	r.updateIndexIfNecessary(resp.Index)
