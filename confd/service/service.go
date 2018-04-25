@@ -230,6 +230,7 @@ func reloadServices(conf Configuration, registry configRegistry.Registry) {
 	services, err := readFromConfig(conf, registry)
 	if err != nil {
 		log.Printf("failed to reload services: %v", err)
+		return
 	}
 
 	log.Printf("write services to template: %v", services)
