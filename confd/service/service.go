@@ -300,6 +300,7 @@ func reloadServicesIfNecessary(resp *client.Response, conf Configuration, regist
 	if err != nil {
 		log.Printf("failed to check if the change is responsible for a service: %v", err)
 		reloadServices(conf, registry)
+		return
 	}
 
 	action := resp.Action
