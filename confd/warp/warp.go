@@ -6,9 +6,9 @@ import (
 	"log"
 
 	"github.com/cloudogu/ces-confd/confd"
+	"github.com/cloudogu/ces-confd/confd/registry"
 	"github.com/coreos/etcd/client"
 	"github.com/pkg/errors"
-	"golang.org/x/net/context"
 )
 
 // Configuration for warp menu creation
@@ -34,7 +34,7 @@ type Category struct {
 
 // String returns the title of the category
 func (category Category) String() string {
-  return category.Title
+	return category.Title
 }
 
 // Categories collection of warp categories
@@ -146,14 +146,14 @@ func jsonWriter(target string, data interface{}) error {
 	return ioutil.WriteFile(target, bytes, 0755)
 }
 
-func execute(configuration Configuration, kapi client.KeysAPI) {
+func execute(configuration Configuration, registry registry.Registry) {
 	reader := ConfigReader{
-		kapi:          kapi,
+		registry:      registry,
 		configuration: configuration,
 	}
-	categories, err := reader.readFromConfig(configuration, kapi)
+	categories, err := reader.readFromConfig(configuration)
 	if err != nil {
-		log.Println("Error durring read", err)
+		log.Println("Error during read:", err)
 		return
 	}
 	log.Printf("all found categories: %v", categories)
@@ -163,32 +163,24 @@ func execute(configuration Configuration, kapi client.KeysAPI) {
 	}
 }
 
-func watch(source Source, kapi client.KeysAPI, execChannel chan Source) {
-	watcherOpts := client.WatcherOptions{AfterIndex: 0, Recursive: true}
-	watcher := kapi.Watcher(source.Path, &watcherOpts)
-	for {
-		resp, err := watcher.Next(context.Background())
-		if err != nil {
-			// TODO: execute before watch start again? wait to reduce load, in case of unrecoverable error?
-			watch(source, kapi, execChannel)
-		} else {
-			action := resp.Action
-			log.Printf("%s changed, action=%s", resp.Node.Key, action)
-			execChannel <- source
-		}
-	}
-}
-
 // Run creates the warp menu and update the menu whenever a relevant etcd key was changed
-func Run(configuration Configuration, kapi client.KeysAPI) {
-	execute(configuration, kapi)
+func Run(configuration Configuration, registry registry.Registry) {
+
 	log.Println("start watcher for warp entries")
-	execChannel := make(chan Source)
+	warpChannel := make(chan *client.Response)
+
 	for _, source := range configuration.Sources {
-		go watch(source, kapi, execChannel)
+
+		go func(source Source) {
+			for {
+				execute(configuration, registry)
+				registry.Watch(source.Path, true, warpChannel)
+			}
+		}(source)
 	}
 
-	for range execChannel {
-		execute(configuration, kapi)
+	for range warpChannel {
+		execute(configuration, registry)
 	}
+
 }

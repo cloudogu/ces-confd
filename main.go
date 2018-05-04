@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/cloudogu/ces-confd/confd/maintenance"
+	"github.com/cloudogu/ces-confd/confd/registry"
 	"github.com/cloudogu/ces-confd/confd/service"
 	"github.com/cloudogu/ces-confd/confd/warp"
 	"github.com/codegangsta/cli"
@@ -25,9 +26,9 @@ var (
 
 // Configuration main configuration object
 type Configuration struct {
-	Endpoint string
-	Warp     warp.Configuration
-	Service  service.Configuration
+	Endpoint    string
+	Warp        warp.Configuration
+	Service     service.Configuration
 	Maintenance maintenance.Configuration
 }
 
@@ -52,6 +53,14 @@ func (app *Application) createEtcdClient() (client.KeysAPI, error) {
 	return client.NewKeysAPI(ec), nil
 }
 
+func (app *Application) createEtcdRegistry() (registry.Registry, error) {
+	cfg := registry.Config{
+		Endpoints: []string{app.Configuration.Endpoint},
+	}
+
+	return registry.NewEtcdRegistry(cfg)
+}
+
 func (app *Application) readConfiguration(path string) error {
 	data, err := ioutil.ReadFile(path)
 	if err != nil {
@@ -72,7 +81,17 @@ func (app *Application) run(c *cli.Context) {
 		log.Fatal(err)
 	}
 
-	kapi, err := app.createEtcdClient()
+	r1, err := app.createEtcdRegistry()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	r2, err := app.createEtcdRegistry()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	r3, err := app.createEtcdRegistry()
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -81,17 +100,17 @@ func (app *Application) run(c *cli.Context) {
 
 	syncWaitGroup.Add(1)
 	go func() {
-    maintenance.Run(app.Configuration.Maintenance, kapi)
-    syncWaitGroup.Done()
-  }()
-	syncWaitGroup.Add(1)
-	go func() {
-		warp.Run(app.Configuration.Warp, kapi)
+		maintenance.Run(app.Configuration.Maintenance, r1)
 		syncWaitGroup.Done()
 	}()
 	syncWaitGroup.Add(1)
 	go func() {
-		service.Run(app.Configuration.Service, kapi)
+		warp.Run(app.Configuration.Warp, r2)
+		syncWaitGroup.Done()
+	}()
+	syncWaitGroup.Add(1)
+	go func() {
+		service.Run(app.Configuration.Service, r3)
 		syncWaitGroup.Done()
 	}()
 
