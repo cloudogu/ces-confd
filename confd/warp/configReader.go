@@ -96,7 +96,7 @@ func (reader *ConfigReader) readFromConfig(configuration Configuration) (Categor
 	for _, source := range configuration.Sources {
 		categories, err := reader.readSource(source)
 		if err != nil {
-			log.Println("Error durring read", err)
+			log.Println("Error during read:", err)
 		}
 		data.insertCategories(categories)
 	}

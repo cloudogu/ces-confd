@@ -153,7 +153,7 @@ func execute(configuration Configuration, registry registry.Registry) {
 	}
 	categories, err := reader.readFromConfig(configuration)
 	if err != nil {
-		log.Println("Error durring read", err)
+		log.Println("Error during read:", err)
 		return
 	}
 	log.Printf("all found categories: %v", categories)

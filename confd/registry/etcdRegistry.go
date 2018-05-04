@@ -35,7 +35,8 @@ func (r *EtcdRegistry) Get(key string) (*client.Response, error) {
 	resp, err := r.keysAPI.Get(context.Background(), key, nil)
 
 	if err != nil {
-		return nil, errors.Wrapf(err, "Error getting value for key %s:", key)
+		// do not wrap this error because the error code will be checked
+		return nil, err
 	}
 
 	r.updateIndexIfNecessary(resp.Index)
