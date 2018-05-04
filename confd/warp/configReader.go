@@ -1,19 +1,18 @@
 package warp
 
 import (
-	"context"
 	"log"
 
 	"sort"
 
-	"github.com/coreos/etcd/client"
+	"github.com/cloudogu/ces-confd/confd/registry"
 	"github.com/pkg/errors"
 )
 
 // ConfigReader reads the configuration for the warp menu from etcd
 type ConfigReader struct {
 	configuration Configuration
-	kapi          client.KeysAPI
+	registry      registry.Registry
 }
 
 func (reader *ConfigReader) createCategories(entries []EntryWithCategory) Categories {
@@ -47,13 +46,13 @@ func (reader *ConfigReader) createCategories(entries []EntryWithCategory) Catego
 // conform structure
 func (reader *ConfigReader) dogusReader(source Source) (Categories, error) {
 	log.Printf("read dogus from %s for warp menu", source.Path)
-	resp, err := reader.kapi.Get(context.Background(), source.Path, nil)
+	resp, err := reader.registry.Get(source.Path)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to read root entry %s from etcd", source.Path)
 	}
 	dogus := []EntryWithCategory{}
 	for _, child := range resp.Node.Nodes {
-		dogu, err := readAndUnmarshalDogu(reader.kapi, child.Key, source.Tag)
+		dogu, err := readAndUnmarshalDogu(reader.registry, child.Key, source.Tag)
 		if err != nil {
 			log.Printf("failed to read and unmarshal dogu: %v", err)
 		} else if dogu.Entry.Title != "" { // TODO more explicit way to handle filtered entries
@@ -66,13 +65,13 @@ func (reader *ConfigReader) dogusReader(source Source) (Categories, error) {
 
 func (reader *ConfigReader) externalsReader(source Source) (Categories, error) {
 	log.Printf("read externals from %s for warp menu", source.Path)
-	resp, err := reader.kapi.Get(context.Background(), source.Path, nil)
+	resp, err := reader.registry.Get(source.Path)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to read root entry %s from etcd", source.Path)
 	}
 	externals := []EntryWithCategory{}
 	for _, child := range resp.Node.Nodes {
-		external, err := readAndUnmarshalExternal(reader.kapi, child.Key)
+		external, err := readAndUnmarshalExternal(reader.registry, child.Key)
 		if err != nil {
 			log.Printf("failed to read and unmarshal external: %v", err)
 		} else {
@@ -92,12 +91,12 @@ func (reader *ConfigReader) readSource(source Source) (Categories, error) {
 	return nil, errors.New("wrong source type")
 }
 
-func (reader *ConfigReader) readFromConfig(configuration Configuration, kapi client.KeysAPI) (Categories, error) {
+func (reader *ConfigReader) readFromConfig(configuration Configuration) (Categories, error) {
 	var data Categories
 	for _, source := range configuration.Sources {
 		categories, err := reader.readSource(source)
 		if err != nil {
-			log.Println("Error durring read", err)
+			log.Println("Error during read:", err)
 		}
 		data.insertCategories(categories)
 	}

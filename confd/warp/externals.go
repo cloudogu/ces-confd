@@ -1,11 +1,9 @@
 package warp
 
 import (
-	"context"
-
 	"encoding/json"
 
-	"github.com/coreos/etcd/client"
+	"github.com/cloudogu/ces-confd/confd/registry"
 	"github.com/pkg/errors"
 )
 
@@ -16,8 +14,8 @@ type externalEntry struct {
 	Category    string
 }
 
-func readAndUnmarshalExternal(kapi client.KeysAPI, key string) (EntryWithCategory, error) {
-	externalBytes, err := readExternalAsBytes(kapi, key)
+func readAndUnmarshalExternal(registry registry.Registry, key string) (EntryWithCategory, error) {
+	externalBytes, err := readExternalAsBytes(registry, key)
 	if err != nil {
 		return EntryWithCategory{}, nil
 	}
@@ -25,8 +23,8 @@ func readAndUnmarshalExternal(kapi client.KeysAPI, key string) (EntryWithCategor
 	return unmarshalExternal(externalBytes)
 }
 
-func readExternalAsBytes(kapi client.KeysAPI, key string) ([]byte, error) {
-	resp, err := kapi.Get(context.Background(), key, nil)
+func readExternalAsBytes(registry registry.Registry, key string) ([]byte, error) {
+	resp, err := registry.Get(key)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to read key %s from etcd", key)
 	}
