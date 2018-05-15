@@ -4,7 +4,7 @@ GLIDEHOME=$(GLIDE_HOME)
 
 ifeq ($(ENVIRONMENT), ci)
 	GLIDEFLAGS+=--no-color
-	$(GLIDEHOME)=$(WORKDIR)/glide_home
+	GLIDEHOME=$(WORKDIR)/glide_home
 	GLIDEFLAGS+= --home $(GLIDEHOME)	
 endif
 
