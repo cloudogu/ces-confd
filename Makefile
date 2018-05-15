@@ -22,6 +22,8 @@ include build/make/clean.mk
 
 include build/make/package-tar.mk
 
+build: package
+
 .PHONY: update-makefiles
 update-makefiles:
 	@echo Updating makefiles...
