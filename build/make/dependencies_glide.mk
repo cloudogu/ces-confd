@@ -1,5 +1,6 @@
 GLIDE=$(GOPATH)/bin/glide
 GLIDEFLAGS=
+GLIDEHOME=$(GLIDE_HOME)
 
 ifeq ($(ENVIRONMENT), ci)
 	GLIDEFLAGS+=--no-color
@@ -14,7 +15,7 @@ dependencies: vendor
 
 vendor: $(GLIDE)
 	@echo "Installing dependencies using Glide..."
-	@$(GLIDE) $(GLIDEFLAGS) install -v
+	@$(GLIDE) $(GLIDEFLAGS) install -v --home $(GLIDEHOME)
 
 $(GLIDE): 
 	@curl https://glide.sh/get | sh
