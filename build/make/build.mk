@@ -7,7 +7,6 @@
 UID_NR:=$(shell id -u)
 GID_NR:=$(shell id -g)
 LDFLAGS=-ldflags "-extldflags -static -X main.Version=$(VERSION) -X main.CommitID=$(COMMIT_ID)"
-WORKDIR=$(shell pwd)
 BUILDDIR=$(WORKDIR)/build
 TMPDIR=$(BUILDDIR)/tmp
 HOMEDIR=$(TMPDIR)/home

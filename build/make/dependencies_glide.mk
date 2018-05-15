@@ -3,6 +3,7 @@ GLIDEFLAGS=
 
 ifeq ($(ENVIRONMENT), ci)
 	GLIDEFLAGS+=--no-color
+	GLIDE_HOME=$(WORKDIR)
 endif
 
 .PHONY: update-dependencies
