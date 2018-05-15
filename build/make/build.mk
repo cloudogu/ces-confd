@@ -28,7 +28,7 @@ $(PASSWD): $(TMPDIR)
 	@echo "$(USER):x:$(UID_NR):$(GID_NR):$(USER):/home/$(USER):/bin/bash" > $(PASSWD)
 
 $(TARGET_DIR)/$(ARTIFACT_ID): dependencies $(PASSWD) $(HOMEDIR) $(TARGET_DIR)
-	@docker run --rm -ti \
+	@docker run --rm \
 	 -e GOOS=linux \
 	 -e GOARCH=amd64 \
 	 -u "$(UID_NR):$(GID_NR)" \
