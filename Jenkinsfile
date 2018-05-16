@@ -22,7 +22,7 @@ node('docker') {
 
     stage('Build') {
       make 'clean'
-      make 'build'
+      make 'package'
       archiveArtifacts 'target/**/*.tar.gz'
     }
 
