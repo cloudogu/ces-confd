@@ -1,4 +1,6 @@
 #!groovy
+@Library('github.com/cloudogu/ces-build-lib@8dd2371')
+import com.cloudogu.ces.cesbuildlib.*
 
 node('docker') {
 
@@ -12,7 +14,11 @@ node('docker') {
   }
 
 
-  docker.image('cloudogu/golang:latest').inside("--volume ${WORKSPACE}:/go/src/${project}") {
+  new Docker(this).image('cloudogu/golang:latest')
+    .mountJenkinsUser()
+    .mountDockerSocket()
+    .installDockerClient('18.03.1')
+    .inside("--volume ${WORKSPACE}:/go/src/${project} -e USER=jenkins") {
 
     stage('Build') {
       make 'clean'

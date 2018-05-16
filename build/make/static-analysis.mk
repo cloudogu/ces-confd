@@ -10,7 +10,7 @@ static-analysis: $(GOPATH)/bin/reviewdog static-analysis-$(ENVIRONMENT)
 
 .PHONY: static-analysis-ci
 static-analysis-ci: target/static-analysis-cs.log
-	@if [ X"$${CI_PULL_REQUEST}" != X"" -a X"$${CI_PULL_REQUEST}" != X"null" ] ; then cat $< | CI_COMMIT=$(COMMIT_ID) reviewdog -f=checkstyle -ci="common" ; fi
+	@if [ X"$$(CI_PULL_REQUEST)" != X"" -a X"$$(CI_PULL_REQUEST)" != X"null" ] ; then cat $< | CI_COMMIT=$(COMMIT_ID) reviewdog -f=checkstyle -ci="common" ; fi
 
 .PHONY: static-analysis-local
 static-analysis-local: target/static-analysis-cs.log target/static-analysis.log
