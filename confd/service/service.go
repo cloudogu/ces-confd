@@ -1,15 +1,10 @@
 package service
 
 import (
-	"encoding/json"
-	"html/template"
 	"log"
-	"os"
-	"path"
-
-	configRegistry "github.com/cloudogu/ces-confd/confd/registry"
 
 	"github.com/cloudogu/ces-confd/confd"
+	configRegistry "github.com/cloudogu/ces-confd/confd/registry"
 	"github.com/coreos/etcd/client"
 	"github.com/pkg/errors"
 )
@@ -21,14 +16,9 @@ type Services []*Service
 
 // Service is a running service
 type Service struct {
-	Name string
-	URL  string
-}
-
-// TemplateModel is the input for the target template
-type TemplateModel struct {
-	Maintenance string
-	Services    Services
+	Name  string
+	URL   string
+	State string
 }
 
 // String returns a string representation of a service
@@ -70,50 +60,6 @@ func createService(raw confd.RawData) *Service {
 	}
 }
 
-func convertToServices(registry configRegistry.Registry, tag string, key string) (Services, error) {
-	resp, err := registry.Get(key)
-	if err != nil {
-		return nil, errors.Wrapf(err, "failed to read service key %s from etcd", key)
-	}
-
-	return convertChildNodesToServices(resp.Node.Nodes, tag), nil
-}
-
-func convertChildNodesToServices(childNodes client.Nodes, tag string) Services {
-	services := Services{}
-	for _, child := range childNodes {
-		service, err := convertToService(tag, child.Value)
-		if err != nil {
-			// do not fail, if a single service contains an invalid entry
-			log.Printf("failed to convert node %s to service: %v", child.Key, err)
-		} else if service != nil {
-			services = append(services, service)
-		}
-	}
-
-	return services
-}
-
-func convertToService(tag string, value string) (*Service, error) {
-	raw := confd.RawData{}
-	err := json.Unmarshal([]byte(value), &raw)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to unmarshall service json")
-	}
-
-	if tag != "" {
-		exists, err := hasTag(raw, tag)
-		if err != nil {
-			return nil, err
-		}
-
-		if !exists {
-			return nil, nil
-		}
-	}
-	return createService(raw), nil
-}
-
 func hasTag(raw confd.RawData, tag string) (bool, error) {
 	tagsInterface, ok := raw["tags"]
 	if !ok {
@@ -128,147 +74,6 @@ func hasTag(raw confd.RawData, tag string) (bool, error) {
 	return confd.Contains(tags, tag), nil
 }
 
-func createTemplateModel(configuration Configuration, registry configRegistry.Registry) (*TemplateModel, error) {
-	maintenanceMode := ""
-	resp, err := registry.Get(configuration.MaintenanceMode)
-
-	if err != nil {
-		if !client.IsKeyNotFound(err) {
-			return nil, errors.Wrapf(err, "could not determine state of maintenance mode")
-		}
-	} else {
-		log.Printf("Maintenance mode resp: %v", resp)
-		maintenanceMode = resp.Node.Value
-	}
-
-	services, err := serviceReader(configuration.Source, configuration.Tag, registry)
-	if err != nil {
-		return nil, errors.Wrapf(err, "Could not read service %s", configuration.Source.Path)
-	}
-
-	return &TemplateModel{maintenanceMode, services}, nil
-}
-
-// serviceReader reads from etcd and converts the keys and value to service
-// struct, which can easily used for configuration templates
-func serviceReader(source Source, tag string, registry configRegistry.Registry) (Services, error) {
-	resp, err := registry.Get(source.Path)
-	if err != nil {
-		return nil, errors.Wrapf(err, "failed to read root %s from etcd", source.Path)
-	}
-
-	services := Services{}
-	for _, child := range resp.Node.Nodes {
-		// convertToServices returns only an error, if the root key could not be read.
-		// In this case we should return an too.
-		serviceEntries, err := convertToServices(registry, tag, child.Key)
-		if err != nil {
-			return nil, errors.Wrapf(err, "failed to convert node %s to service", child.Key)
-		}
-		for _, service := range serviceEntries {
-			services = append(services, service)
-		}
-	}
-	return services, nil
-}
-
-func readFromConfig(configuration Configuration, registry configRegistry.Registry) (interface{}, error) {
-	return createTemplateModel(configuration, registry)
-}
-
-// templateWriter transform the data with a golang template
-func templateWriter(conf Configuration, data interface{}) error {
-	if conf.PreCommand != "" {
-		err := preCheck(conf, data)
-		if err != nil {
-			return errors.Wrap(err, "pre check failed")
-		}
-	}
-
-	err := write(conf, data)
-	if err != nil {
-		return errors.Wrap(err, "failed to write data")
-	}
-
-	if conf.PostCommand != "" {
-		err = post(conf.PostCommand)
-		if err != nil {
-			return errors.Wrap(err, "post command failed")
-		}
-	}
-	return nil
-}
-
-func write(conf Configuration, data interface{}) error {
-	name := path.Base(conf.Template)
-	tmpl, err := template.New(name).ParseFiles(conf.Template)
-	if err != nil {
-		return errors.Wrap(err, "failed to parse template")
-	}
-
-	file, err := os.Create(conf.Target)
-	if err != nil {
-		return errors.Wrapf(err, "failed to create target file %s", conf.Target)
-	}
-
-	defer func() {
-		err := file.Close()
-		if err != nil {
-			log.Println("failed to close file")
-		}
-	}()
-
-	err = tmpl.Execute(file, data)
-	if err != nil {
-		return errors.Wrap(err, "failed to render template")
-	}
-	return nil
-}
-
-func reloadServices(conf Configuration, registry configRegistry.Registry) {
-	log.Println("reload services from etcd")
-	services, err := readFromConfig(conf, registry)
-	if err != nil {
-		log.Printf("failed to reload services: %v", err)
-		return
-	}
-
-	log.Printf("write services to template: %v", services)
-
-	if err := templateWriter(conf, services); err != nil {
-		log.Printf("error on templateWriter: %s", err.Error())
-	}
-}
-
-func hasServiceChanged(conf Configuration, resp *client.Response) (bool, error) {
-	if !isDirectory(resp.Node) && isModificationAction(resp.Action) {
-		return isServiceResponse(resp, conf.Tag)
-	}
-	return false, nil
-}
-
-func isServiceResponse(resp *client.Response, tag string) (bool, error) {
-	service, err := isServiceNode(resp.Node, tag)
-	if err != nil {
-		return false, err
-	}
-
-	if service {
-		return true, nil
-	}
-
-	service, err = isServiceNode(resp.PrevNode, tag)
-	if err != nil {
-		return false, err
-	}
-
-	if service {
-		return true, nil
-	}
-
-	return false, nil
-}
-
 func isDirectory(node *client.Node) bool {
 	return node.Dir
 }
@@ -277,29 +82,12 @@ func isModificationAction(action string) bool {
 	return confd.ContainsString(modificationActions, action)
 }
 
-func isServiceNode(node *client.Node, tag string) (bool, error) {
-	if node == nil {
-		return false, nil
-	}
-
-	if node.Value == "" {
-		return false, nil
-	}
-
-	service, err := convertToService(tag, node.Value)
-	if err != nil {
-		return false, errors.Wrap(err, "failed to convert node to service")
-	}
-
-	return service != nil, nil
-}
-
-func reloadServicesIfNecessary(resp *client.Response, conf Configuration, registry configRegistry.Registry) {
+func reloadServicesIfNecessary(loader *Loader, resp *client.Response) {
 	key := resp.Node.Key
-	changed, err := hasServiceChanged(conf, resp)
+	changed, err := loader.HasServiceChanged(resp)
 	if err != nil {
 		log.Printf("failed to check if the change is responsible for a service: %v", err)
-		reloadServices(conf, registry)
+		loader.ReloadServices()
 		return
 	}
 
@@ -307,7 +95,7 @@ func reloadServicesIfNecessary(resp *client.Response, conf Configuration, regist
 
 	if changed {
 		log.Printf("service %s changed, action=%s", key, action)
-		reloadServices(conf, registry)
+		loader.ReloadServices()
 	} else {
 		log.Printf("ignoring change to non service key %s with action %s", key, action)
 	}
@@ -315,14 +103,18 @@ func reloadServicesIfNecessary(resp *client.Response, conf Configuration, regist
 
 // Run creates the configuration for the services and updates the configuration whenever a service changed
 func Run(conf Configuration, registry configRegistry.Registry) {
-
 	serviceChannel := make(chan *client.Response)
 	maintenanceChannel := make(chan *client.Response)
+	loader := &Loader{
+		registry: registry,
+		config:   conf,
+		writer:   &CommandWriter{config: conf},
+	}
 
 	log.Println("starting service watcher")
 	go func() {
 		for {
-			reloadServices(conf, registry)
+			loader.ReloadServices()
 			registry.Watch(conf.Source.Path, true, serviceChannel)
 		}
 	}()
@@ -330,16 +122,17 @@ func Run(conf Configuration, registry configRegistry.Registry) {
 
 	go func() {
 		for {
-			reloadServices(conf, registry)
+			// TODO: necessary?
+			loader.ReloadServices()
 			registry.Watch(conf.MaintenanceMode, false, maintenanceChannel)
 		}
 	}()
 	for {
 		select {
 		case <-maintenanceChannel:
-			reloadServices(conf, registry)
+			loader.ReloadServices()
 		case resp := <-serviceChannel:
-			reloadServicesIfNecessary(resp, conf, registry)
+			reloadServicesIfNecessary(loader, resp)
 		}
 	}
 }
