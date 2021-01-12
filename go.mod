@@ -5,6 +5,7 @@ go 1.14
 require (
 	github.com/codegangsta/cli v1.18.1-0.20160716161136-11c134509d89
 	github.com/coreos/etcd v3.0.0-beta.0.0.20160719051054-1bf78476cf97+incompatible
+	github.com/jstemmer/go-junit-report v0.9.1 // indirect
 	github.com/pkg/errors v0.7.1-0.20160719091340-cc5fbb72d9b1
 	github.com/satori/go.uuid v1.1.0
 	github.com/stretchr/testify v1.6.1
