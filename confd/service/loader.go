@@ -2,7 +2,9 @@ package service
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
+	"strings"
 
 	"github.com/cloudogu/ces-confd/confd"
 	configRegistry "github.com/cloudogu/ces-confd/confd/registry"
@@ -46,7 +48,24 @@ func (l *Loader) convertToServices(key string) (Services, error) {
 
 	services := l.convertChildNodesToServices(resp.Node.Nodes)
 
+	if !l.config.IgnoreState {
+		l.getStates(services)
+	}
+
 	return services, nil
+}
+
+func (l *Loader) getStates(services Services) {
+	for _, service := range services {
+		res, err := l.registry.Get(fmt.Sprintf("%s/%s", l.config.State.Source, service.StateNode))
+		if err != nil {
+			log.Printf("could not get state of %s:%s", service.StateNode, err)
+			log.Printf("continue and set state state of %s to %s", service.Name, "not ready")
+			service.State = "not ready"
+			continue
+		}
+		service.State = res.Node.Value
+	}
 }
 
 func (l *Loader) convertChildNodesToServices(childNodes client.Nodes) Services {
@@ -57,11 +76,32 @@ func (l *Loader) convertChildNodesToServices(childNodes client.Nodes) Services {
 			// do not fail, if a single service contains an invalid entry
 			log.Printf("failed to convert node %s to service: %v", child.Key, err)
 		} else if service != nil {
+			if service.StateNode == "" && !l.config.IgnoreState {
+				// For now the stateNode is derived from the service key, but it can also be set in registry.
+				stateNode, err := l.getStateNodeFromKey(child.Key)
+				if err != nil {
+					log.Printf("failed to get stateNode from key %s with error: %v", child.Key, err)
+					log.Printf("skip service %s", service.Name)
+					continue
+				}
+				service.StateNode = stateNode
+			}
 			services = append(services, service)
 		}
 	}
 
 	return services
+}
+
+func (l *Loader) getStateNodeFromKey(key string) (string, error) {
+	expectedPrefix := l.config.Source.Path + "/"
+	if !strings.HasPrefix(key, expectedPrefix) {
+		return "", fmt.Errorf("key %s does not match expected format since it does not begin with %s", key, expectedPrefix)
+	}
+	serviceSuffix := strings.TrimPrefix(key, expectedPrefix)
+	serviceNode := strings.Split(serviceSuffix, "/")
+	stateNode := strings.Split(serviceNode[0], "-")
+	return stateNode[0], nil
 }
 
 func (l *Loader) convertToService(value string) (*Service, error) {

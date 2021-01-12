@@ -253,3 +253,48 @@ func TestIsServiceNodeWithoutValue(t *testing.T) {
 	require.Nil(t, err)
 	require.False(t, isService)
 }
+
+func TestLoader_getStateNodeFromKey(t *testing.T) {
+	tests := []struct {
+		name        string
+		servicePath string
+		key         string
+		want        string
+		wantErr     bool
+	}{
+		{
+			name:        "default service",
+			servicePath: "/services",
+			key:         "/services/scm/registrator:scm:8080",
+			want:        "scm",
+			wantErr:     false,
+		}, {
+			name:        "service with port",
+			servicePath: "/services",
+			key:         "/services/scm-2222/registrator:scm:2222",
+			want:        "scm",
+			wantErr:     false,
+		}, {
+			name:        "wrong path",
+			servicePath: "/service",
+			key:         "/services/scm/registrator:scm:8080",
+			want:        "",
+			wantErr:     true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			l := &Loader{
+				config: Configuration{Source: Source{Path: tt.servicePath}},
+			}
+			got, err := l.getStateNodeFromKey(tt.key)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("getStateNodeFromKey() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if got != tt.want {
+				t.Errorf("getStateNodeFromKey() got = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}

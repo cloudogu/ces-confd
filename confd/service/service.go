@@ -16,9 +16,13 @@ type Services []*Service
 
 // Service is a running service
 type Service struct {
-	Name  string
-	URL   string
+	Name string
+	URL  string
+	// State represents the current state of the service
 	State string
+	// StateNode is the name of the node which holds the state information of the service.
+	// For dogus it's usually the name of the dogu.
+	StateNode string
 }
 
 // String returns a string representation of a service
@@ -38,9 +42,16 @@ type Configuration struct {
 	Target          string
 	Template        string
 	Tag             string
-	PreCommand      string `yaml:"pre-command"`
-	PostCommand     string `yaml:"post-command"`
+	PreCommand      string             `yaml:"pre-command"`
+	PostCommand     string             `yaml:"post-command"`
+	IgnoreState     bool               `yaml:"ignore-state"`
+	State           stateConfiguration `yaml:"state"`
 	Order           confd.Order
+}
+
+type stateConfiguration struct {
+	Source    string `yaml:"source"`
+	SaneValue string `yaml:"sane-value"`
 }
 
 func createService(raw confd.RawData) *Service {
@@ -105,6 +116,7 @@ func reloadServicesIfNecessary(loader *Loader, resp *client.Response) {
 func Run(conf Configuration, registry configRegistry.Registry) {
 	serviceChannel := make(chan *client.Response)
 	maintenanceChannel := make(chan *client.Response)
+	stateChannel := make(chan *client.Response)
 	loader := &Loader{
 		registry: registry,
 		config:   conf,
@@ -127,12 +139,28 @@ func Run(conf Configuration, registry configRegistry.Registry) {
 			registry.Watch(conf.MaintenanceMode, false, maintenanceChannel)
 		}
 	}()
+
+	if !conf.IgnoreState {
+		log.Println("starting state watcher")
+		go func() {
+			for {
+				// TODO: necessary?
+				loader.ReloadServices()
+				registry.Watch(conf.State.Source, true, stateChannel)
+			}
+		}()
+	}
 	for {
 		select {
 		case <-maintenanceChannel:
 			loader.ReloadServices()
 		case resp := <-serviceChannel:
 			reloadServicesIfNecessary(loader, resp)
+		case resp := <-stateChannel:
+			// TODO: Here is room for improvement. We could also check if actions changed a state of a service
+			if isModificationAction(resp.Action) {
+				loader.ReloadServices()
+			}
 		}
 	}
 }
