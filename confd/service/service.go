@@ -1,6 +1,7 @@
 package service
 
 import (
+	"fmt"
 	"log"
 
 	"github.com/cloudogu/ces-confd/confd"
@@ -16,14 +17,14 @@ type Services []*Service
 
 // Service is a running service
 type Service struct {
-	Name  string
-	URL   string
-	State string
+	Name         string
+	URL          string
+	HealthStatus string
 }
 
 // String returns a string representation of a service
 func (service *Service) String() string {
-	return "{name=" + service.Name + ", URL=" + service.URL + "}"
+	return fmt.Sprintf("{name=%s, URL=%s, HealthStatus=%s}", service.Name, service.URL, service.HealthStatus)
 }
 
 // Source of services path in etcd
@@ -54,9 +55,13 @@ func createService(raw confd.RawData) *Service {
 		return nil
 	}
 
+	// an empty healthStatus is ok since maybe an old version of registrator is used
+	healthStatus := raw.GetStringValue("healthStatus")
+
 	return &Service{
-		Name: name,
-		URL:  "http://" + service,
+		Name:         name,
+		URL:          "http://" + service,
+		HealthStatus: healthStatus,
 	}
 }
 
