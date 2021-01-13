@@ -15,10 +15,6 @@ service:
   target: /etc/nginx/conf.d/app.conf
   template: /etc/ces-confd/templates/nginx.app.tpl
   maintenance-mode: /config/_global/maintenance
-  ignore-state: false
-  state:
-    source: /state
-    sane-value: ready
   tag: webapp
 
 maintenance:

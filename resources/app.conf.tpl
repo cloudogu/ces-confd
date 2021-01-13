@@ -26,11 +26,7 @@ server {
     # services
     {{range .Services}}
       location /{{.Name}} {
-         {{if eq .State "ready"}}
-            proxy_pass {{.URL}};
-         {{else}}
-            alias /var/www/html/starting/;
-         {{end}}
+        proxy_pass {{.URL}};
       }
     {{end}}
     # end of services
