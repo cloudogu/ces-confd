@@ -16,6 +16,7 @@ service:
   template: /etc/ces-confd/templates/nginx.app.tpl
   maintenance-mode: /config/_global/maintenance
   tag: webapp
+  ignore-health: false
 
 maintenance:
   source:
