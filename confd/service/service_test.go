@@ -12,10 +12,10 @@ import (
 func TestServicesString(t *testing.T) {
 	services := Services{}
 
-	heartOfGold := &Service{Name: "heartOfGold", URL: "http://8.8.8.8"}
+	heartOfGold := &Service{Name: "heartOfGold", URL: "http://8.8.8.8", HealthStatus: "healthy"}
 	services = append(services, heartOfGold)
 	content := fmt.Sprintf("services: %v", services)
-	assert.Equal(t, "services: [{name=heartOfGold, URL=http://8.8.8.8}]", content)
+	assert.Equal(t, "services: [{name=heartOfGold, URL=http://8.8.8.8, HealthStatus=healthy}]", content)
 }
 
 func TestCreateService(t *testing.T) {
