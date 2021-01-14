@@ -32,9 +32,26 @@ func TestConvertTotServicesShouldNotFailOnError(t *testing.T) {
 
 func TestConvertToService(t *testing.T) {
 	loader := &Loader{config: Configuration{Tag: "webapp"}}
+	service, err := loader.convertToService("{\"name\": \"heartOfGold\", \"service\": \"8.8.8.8\", \"tags\": [\"webapp\"],\"healthStatus\":\"healthy\"}")
+	require.Nil(t, err)
+	require.NotNil(t, service)
+	require.Equal(t, "healthy", service.HealthStatus)
+}
+
+func TestConvertToServiceWithEmptyHealth(t *testing.T) {
+	loader := &Loader{config: Configuration{Tag: "webapp"}}
 	service, err := loader.convertToService("{\"name\": \"heartOfGold\", \"service\": \"8.8.8.8\", \"tags\": [\"webapp\"]}")
 	require.Nil(t, err)
 	require.NotNil(t, service)
+	require.Equal(t, "", service.HealthStatus)
+}
+
+func TestConvertToServiceWithIgnoredHealth(t *testing.T) {
+	loader := &Loader{config: Configuration{Tag: "webapp", IgnoreHealth: true}}
+	service, err := loader.convertToService("{\"name\": \"heartOfGold\", \"service\": \"8.8.8.8\", \"tags\": [\"webapp\"],\"healthStatus\":\"healthy\"}")
+	require.Nil(t, err)
+	require.NotNil(t, service)
+	require.Equal(t, "", service.HealthStatus)
 }
 
 func TestConvertToServiceWithoutTag(t *testing.T) {

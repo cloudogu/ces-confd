@@ -42,6 +42,7 @@ type Configuration struct {
 	PreCommand      string `yaml:"pre-command"`
 	PostCommand     string `yaml:"post-command"`
 	Order           confd.Order
+	IgnoreHealth    bool `yaml:"ignore-health"`
 }
 
 func createService(raw confd.RawData) *Service {

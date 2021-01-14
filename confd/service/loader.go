@@ -81,6 +81,11 @@ func (l *Loader) convertToService(value string) (*Service, error) {
 			return nil, nil
 		}
 	}
+
+	if l.config.IgnoreHealth {
+		raw["healthStatus"] = nil
+	}
+
 	return createService(raw), nil
 }
 
