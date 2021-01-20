@@ -12,20 +12,22 @@ import (
 func TestServicesString(t *testing.T) {
 	services := Services{}
 
-	heartOfGold := &Service{Name: "heartOfGold", URL: "http://8.8.8.8", HealthStatus: "healthy"}
+	heartOfGold := &Service{Name: "heartOfGold", URL: "http://8.8.8.8", HealthStatus: "healthy", Location: "heartOfGoldLocation"}
 	services = append(services, heartOfGold)
 	content := fmt.Sprintf("services: %v", services)
-	assert.Equal(t, "services: [{name=heartOfGold, URL=http://8.8.8.8, HealthStatus=healthy}]", content)
+	assert.Equal(t, "services: [{name=heartOfGold, URL=http://8.8.8.8, HealthStatus=healthy, Location=heartOfGoldLocation}]", content)
 }
 
 func TestCreateService(t *testing.T) {
 	raw := confd.RawData{}
 	raw["name"] = "heartOfGold"
 	raw["service"] = "8.8.8.8"
+	raw["location"] = "heartOfGoldLocation"
 
 	service := createService(raw)
 	assert.Equal(t, "heartOfGold", service.Name)
 	assert.Equal(t, "http://8.8.8.8", service.URL)
+	assert.Equal(t, "heartOfGoldLocation", service.Location)
 }
 
 func TestCreateServiceWithoutNameKey(t *testing.T) {
@@ -60,4 +62,13 @@ func TestCreateServiceWithNonStringNameKey(t *testing.T) {
 
 	service := createService(raw)
 	require.Nil(t, service)
+}
+
+func TestCreateServiceWithoutLocationKey(t *testing.T) {
+	raw := confd.RawData{}
+	raw["name"] = "heartOfGold"
+	raw["service"] = "8.8.8.8"
+
+	service := createService(raw)
+	assert.Equal(t, "heartOfGold", service.Location)
 }
