@@ -22,7 +22,11 @@ func TestCreateService(t *testing.T) {
 	raw := confd.RawData{}
 	raw["name"] = "heartOfGold"
 	raw["service"] = "8.8.8.8"
-	raw["location"] = "heartOfGoldLocation"
+
+	attributes := map[string]interface{}{
+		"location": "heartOfGoldLocation",
+	}
+	raw["attributes"] = attributes
 
 	service := createService(raw)
 	assert.Equal(t, "heartOfGold", service.Name)
@@ -64,11 +68,41 @@ func TestCreateServiceWithNonStringNameKey(t *testing.T) {
 	require.Nil(t, service)
 }
 
-func TestCreateServiceWithoutLocationKey(t *testing.T) {
+func TestCreateServiceWithoutAttributesKey(t *testing.T) {
 	raw := confd.RawData{}
 	raw["name"] = "heartOfGold"
 	raw["service"] = "8.8.8.8"
 
 	service := createService(raw)
+	assert.Equal(t, "heartOfGold", service.Location)
+}
+
+func TestCreateServiceWithNonMapAttributesKey(t *testing.T) {
+	raw := confd.RawData{}
+	raw["name"] = "heartOfGold"
+	raw["service"] = "8.8.8.8"
+	raw["attributes"] = "location:heartOfGoldLocation"
+
+	service := createService(raw)
+	assert.Equal(t, "heartOfGold", service.Name)
+	assert.Equal(t, "http://8.8.8.8", service.URL)
+	assert.Equal(t, "heartOfGold", service.Location)
+}
+
+func TestCreateServiceWithNonLocationAttributeKey(t *testing.T) {
+	raw := confd.RawData{}
+	raw["name"] = "heartOfGold"
+	raw["service"] = "8.8.8.8"
+
+	attributes := map[string]interface{}{
+		"day":   "Friday",
+		"month": "December",
+		"year":  2022,
+	}
+	raw["attributes"] = attributes
+
+	service := createService(raw)
+	assert.Equal(t, "heartOfGold", service.Name)
+	assert.Equal(t, "http://8.8.8.8", service.URL)
 	assert.Equal(t, "heartOfGold", service.Location)
 }

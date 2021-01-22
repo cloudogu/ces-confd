@@ -60,7 +60,7 @@ func createService(raw confd.RawData) *Service {
 	// an empty healthStatus is ok since maybe an old version of registrator is used
 	healthStatus := raw.GetStringValue("healthStatus")
 
-	location := raw.GetStringValue("location")
+	location := raw.GetAttributeValue("location")
 	if location == "" {
 		location = name
 	}
