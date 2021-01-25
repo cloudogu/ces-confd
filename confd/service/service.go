@@ -20,11 +20,12 @@ type Service struct {
 	Name         string
 	URL          string
 	HealthStatus string
+	Location     string
 }
 
 // String returns a string representation of a service
 func (service *Service) String() string {
-	return fmt.Sprintf("{name=%s, URL=%s, HealthStatus=%s}", service.Name, service.URL, service.HealthStatus)
+	return fmt.Sprintf("{name=%s, URL=%s, HealthStatus=%s, Location=%s}", service.Name, service.URL, service.HealthStatus, service.Location)
 }
 
 // Source of services path in etcd
@@ -59,10 +60,16 @@ func createService(raw confd.RawData) *Service {
 	// an empty healthStatus is ok since maybe an old version of registrator is used
 	healthStatus := raw.GetStringValue("healthStatus")
 
+	location := raw.GetAttributeValue("location")
+	if location == "" {
+		location = name
+	}
+
 	return &Service{
 		Name:         name,
 		URL:          "http://" + service,
 		HealthStatus: healthStatus,
+		Location:     location,
 	}
 }
 
