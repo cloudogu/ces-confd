@@ -20,89 +20,86 @@ func TestServicesString(t *testing.T) {
 
 func TestCreateService(t *testing.T) {
 	raw := confd.RawData{}
-	raw["name"] = "heartOfGold"
-	raw["service"] = "8.8.8.8"
 
-	attributes := map[string]interface{}{
-		"location": "heartOfGoldLocation",
-	}
-	raw["attributes"] = attributes
+	t.Run("should return created service ", func(t *testing.T) {
+		raw["name"] = "heartOfGold"
+		raw["service"] = "8.8.8.8"
 
-	service := createService(raw)
-	assert.Equal(t, "heartOfGold", service.Name)
-	assert.Equal(t, "http://8.8.8.8", service.URL)
-	assert.Equal(t, "heartOfGoldLocation", service.Location)
-}
+		attributes := map[string]interface{}{
+			"location": "heartOfGoldLocation",
+		}
+		raw["attributes"] = attributes
 
-func TestCreateServiceWithoutNameKey(t *testing.T) {
-	raw := confd.RawData{}
-	raw["service"] = "8.8.8.8"
+		service := createService(raw)
+		assert.Equal(t, "heartOfGold", service.Name)
+		assert.Equal(t, "http://8.8.8.8", service.URL)
+		assert.Equal(t, "heartOfGoldLocation", service.Location)
+	})
 
-	service := createService(raw)
-	require.Nil(t, service)
-}
+	t.Run("should return nil when name is missing ", func(t *testing.T) {
+		raw := confd.RawData{}
+		raw["service"] = "8.8.8.8"
 
-func TestCreateServiceWithoutServiceKey(t *testing.T) {
-	raw := confd.RawData{}
-	raw["name"] = "heartOfGold"
+		service := createService(raw)
+		require.Nil(t, service)
+	})
 
-	service := createService(raw)
-	require.Nil(t, service)
-}
+	t.Run("should return nil when value for service is missing", func(t *testing.T) {
+		raw := confd.RawData{}
+		raw["name"] = "heartOfGold"
 
-func TestCreateServiceWithNonStringServiceKey(t *testing.T) {
-	raw := confd.RawData{}
-	raw["name"] = "heartOfGold"
-	raw["service"] = false
+		service := createService(raw)
+		require.Nil(t, service)
+	})
 
-	service := createService(raw)
-	require.Nil(t, service)
-}
+	t.Run("should return nil when name is not a string", func(t *testing.T) {
+		raw["name"] = false
+		raw["service"] = "8.8.8.8"
 
-func TestCreateServiceWithNonStringNameKey(t *testing.T) {
-	raw := confd.RawData{}
-	raw["name"] = false
-	raw["service"] = "8.8.8.8"
+		service := createService(raw)
+		require.Nil(t, service)
+	})
 
-	service := createService(raw)
-	require.Nil(t, service)
-}
+	t.Run("should return nil when value for service is not a string", func(t *testing.T) {
+		raw["name"] = "heartOfGold"
+		raw["service"] = false
 
-func TestCreateServiceWithoutAttributesKey(t *testing.T) {
-	raw := confd.RawData{}
-	raw["name"] = "heartOfGold"
-	raw["service"] = "8.8.8.8"
+		service := createService(raw)
+		require.Nil(t, service)
+	})
 
-	service := createService(raw)
-	assert.Equal(t, "heartOfGold", service.Location)
-}
+	t.Run("should return created service even without attributes", func(t *testing.T) {
+		raw := confd.RawData{}
+		raw["name"] = "heartOfGold"
+		raw["service"] = "8.8.8.8"
 
-func TestCreateServiceWithNonMapAttributesKey(t *testing.T) {
-	raw := confd.RawData{}
-	raw["name"] = "heartOfGold"
-	raw["service"] = "8.8.8.8"
-	raw["attributes"] = "location:heartOfGoldLocation"
+		service := createService(raw)
+		assert.Equal(t, "heartOfGold", service.Location)
+	})
 
-	service := createService(raw)
-	assert.Equal(t, "heartOfGold", service.Name)
-	assert.Equal(t, "http://8.8.8.8", service.URL)
-	assert.Equal(t, "heartOfGold", service.Location)
-}
+	t.Run("should return created service even when attributes is not a map", func(t *testing.T) {
+		raw["name"] = "heartOfGold"
+		raw["service"] = "8.8.8.8"
+		raw["attributes"] = "location:heartOfGoldLocation"
 
-func TestCreateServiceWithNonLocationAttributeKey(t *testing.T) {
-	raw := confd.RawData{}
-	raw["name"] = "heartOfGold"
-	raw["service"] = "8.8.8.8"
+		service := createService(raw)
+		assert.Equal(t, "heartOfGold", service.Location)
+	})
 
-	attributes := map[string]interface{}{
-		"day":   "Friday",
-		"month": "December",
-		"year":  2022,
-	}
-	raw["attributes"] = attributes
+	t.Run("should return created service even when location attribute does not exist", func(t *testing.T) {
+		raw["name"] = "heartOfGold"
+		raw["service"] = "8.8.8.8"
 
-	service := createService(raw)
-	assert.Equal(t, "heartOfGold", service.Name)
-	assert.Equal(t, "http://8.8.8.8", service.URL)
-	assert.Equal(t, "heartOfGold", service.Location)
+		attributes := map[string]interface{}{
+			"day":   "Friday",
+			"month": "December",
+			"year":  2022,
+		}
+		raw["attributes"] = attributes
+
+		service := createService(raw)
+		assert.Equal(t, "heartOfGold", service.Name)
+		assert.Equal(t, "http://8.8.8.8", service.URL)
+		assert.Equal(t, "heartOfGold", service.Location)
+	})
 }
