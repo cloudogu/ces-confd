@@ -12,7 +12,7 @@ func TestConvertTotServicesShouldNotFailOnError(t *testing.T) {
 	loader := &Loader{config: Configuration{Tag: "webapp"}}
 	heartOfGold := &client.Node{
 		Key:   "/services/heartOfGold",
-		Value: "{\"name\": \"heartOfGold\", \"service\": \"8.8.8.8\", \"tags\": [\"webapp\"]}",
+		Value: "{\"name\": \"heartOfGold\", \"service\": \"8.8.8.8\", \"tags\": [\"webapp\"], \"attributes\":{\"location\":\"heartOfGoldLocation\"}}",
 	}
 
 	restaurantAtTheEndOfTheUniverse := &client.Node{
@@ -32,7 +32,7 @@ func TestConvertTotServicesShouldNotFailOnError(t *testing.T) {
 
 func TestConvertToService(t *testing.T) {
 	loader := &Loader{config: Configuration{Tag: "webapp"}}
-	service, err := loader.convertToService("{\"name\": \"heartOfGold\", \"service\": \"8.8.8.8\", \"tags\": [\"webapp\"],\"healthStatus\":\"healthy\"}")
+	service, err := loader.convertToService("{\"name\": \"heartOfGold\", \"service\": \"8.8.8.8\", \"tags\": [\"webapp\"],\"healthStatus\":\"healthy\",\"attributes\":{\"day\":\"Friday\",\"location\":\"heartOfGoldLocation\"}}")
 	require.Nil(t, err)
 	require.NotNil(t, service)
 	require.Equal(t, "healthy", service.HealthStatus)
