@@ -2,7 +2,9 @@ package registry
 
 import (
 	"log"
+	"strings"
 	"sync"
+	"time"
 
 	"github.com/coreos/etcd/client"
 	"github.com/pkg/errors"
@@ -69,11 +71,21 @@ func (r *EtcdRegistry) Watch(key string, recursive bool, eventChannel chan *clie
 		resp, err := watcher.Next(context.Background())
 
 		if err != nil {
-			log.Printf("Could not get event: %v", err)
-			r.indexMutex.Lock()
-			defer r.indexMutex.Unlock()
-			r.recentIndex = 0
-			return
+			if strings.Contains(err.Error(), "etcd cluster is unavailable or misconfigured") {
+				log.Printf("Cannot reach etcd cluster. Try again in 300 seconds. Error: %v", err)
+				r.indexMutex.Lock()
+				defer r.indexMutex.Unlock()
+				r.recentIndex = 0
+				time.Sleep(time.Minute * 5)
+				return
+			} else {
+				log.Printf("Could not get event. Try again in 30 seconds. Error: %v", err)
+				r.indexMutex.Lock()
+				defer r.indexMutex.Unlock()
+				r.recentIndex = 0
+				time.Sleep(time.Second * 30)
+				return
+			}
 		}
 
 		eventChannel <- resp
