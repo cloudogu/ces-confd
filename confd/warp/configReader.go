@@ -81,18 +81,39 @@ func (reader *ConfigReader) externalsReader(source Source) (Categories, error) {
 	return reader.createCategories(externals), nil
 }
 
+func (reader *ConfigReader) supportReader(source Source) (Categories, error) {
+	log.Printf("read support from %s for warp menu", source.Path)
+
+	externals := []EntryWithCategory{
+		{
+			Entry: Entry{
+				DisplayName: "test",
+				Href:        "test",
+				Title:       "test",
+				Target:      TARGET_EXTERNAL,
+			},
+			Category: "support",
+		},
+	}
+
+	return reader.createCategories(externals), nil
+}
+
 func (reader *ConfigReader) readSource(source Source) (Categories, error) {
 	switch source.SourceType {
 	case "dogus":
 		return reader.dogusReader(source)
 	case "externals":
 		return reader.externalsReader(source)
+	case "support":
+		return reader.supportReader(source)
 	}
 	return nil, errors.New("wrong source type")
 }
 
 func (reader *ConfigReader) readFromConfig(configuration Configuration) (Categories, error) {
 	var data Categories
+
 	for _, source := range configuration.Sources {
 		categories, err := reader.readSource(source)
 		if err != nil {
@@ -100,5 +121,6 @@ func (reader *ConfigReader) readFromConfig(configuration Configuration) (Categor
 		}
 		data.insertCategories(categories)
 	}
+
 	return data, nil
 }

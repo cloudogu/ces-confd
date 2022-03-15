@@ -8,6 +8,7 @@ warp:
   target: /var/www/html/warp/menu.json
   order:
     External Links: 2
+    Support: 3
 
 service:
   source:
