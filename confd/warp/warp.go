@@ -13,9 +13,10 @@ import (
 
 // Configuration for warp menu creation
 type Configuration struct {
-	Sources []Source
-	Target  string
-	Order   confd.Order
+	Sources        []Source
+	Target         string
+	Order          confd.Order
+	SupportSources []SupportSource
 }
 
 // Source in etcd
@@ -23,6 +24,12 @@ type Source struct {
 	Path       string
 	SourceType string `yaml:"type"`
 	Tag        string
+}
+
+// Source for SupportEntries from yaml
+type SupportSource struct {
+	identifier string
+	external   bool
 }
 
 // Category category of multiple entries in the warp menu

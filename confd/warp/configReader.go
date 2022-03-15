@@ -81,34 +81,35 @@ func (reader *ConfigReader) externalsReader(source Source) (Categories, error) {
 	return reader.createCategories(externals), nil
 }
 
-func (reader *ConfigReader) supportReader(source Source) (Categories, error) {
-	log.Printf("read support from %s for warp menu", source.Path)
-
-	externals := []EntryWithCategory{
-		{
-			Entry: Entry{
-				DisplayName: "test",
-				Href:        "test",
-				Title:       "test",
-				Target:      TARGET_EXTERNAL,
-			},
-			Category: "support",
-		},
-	}
-
-	return reader.createCategories(externals), nil
-}
-
 func (reader *ConfigReader) readSource(source Source) (Categories, error) {
 	switch source.SourceType {
 	case "dogus":
 		return reader.dogusReader(source)
 	case "externals":
 		return reader.externalsReader(source)
-	case "support":
-		return reader.supportReader(source)
 	}
 	return nil, errors.New("wrong source type")
+}
+
+func (reader *ConfigReader) readSupport(supportSources []SupportSource) (Categories, error) {
+
+	var supportEntries []EntryWithCategory
+
+	for _, supportSource := range supportSources {
+		// supportSource -> EntryWithCategory
+		entry := Entry{}
+		if supportSource.external {
+			entry = Entry{Title: supportSource.identifier, Target: TARGET_EXTERNAL}
+		} else {
+			entry = Entry{Title: supportSource.identifier, Target: TARGET_SELF}
+		}
+
+		entryWithCategory := EntryWithCategory{Entry: entry, Category: "Support"}
+		log.Printf("suppport-entry with Category:%v and Entry %v", entryWithCategory.Category, entryWithCategory.Entry)
+		supportEntries = append(supportEntries, entryWithCategory)
+	}
+
+	return reader.createCategories(supportEntries), nil
 }
 
 func (reader *ConfigReader) readFromConfig(configuration Configuration) (Categories, error) {
@@ -121,6 +122,14 @@ func (reader *ConfigReader) readFromConfig(configuration Configuration) (Categor
 		}
 		data.insertCategories(categories)
 	}
+
+	log.Println("read SupportEntries")
+	// add support category
+	supportCategory, err := reader.readSupport(configuration.SupportSources)
+	if err != nil {
+		log.Println("Error during support read:", err)
+	}
+	data.insertCategories(supportCategory)
 
 	return data, nil
 }
