@@ -116,13 +116,8 @@ func (reader *ConfigReader) getDisabledSupportIdentifiers() ([]string, error) {
 	return disabledEntries, nil
 }
 
-func (reader *ConfigReader) readSupport(supportSources []SupportSource) (Categories, error) {
+func (reader *ConfigReader) readSupport(supportSources []SupportSource, disabledSupportEntries []string) (Categories, error) {
 	var supportEntries []EntryWithCategory
-
-	disabledSupportEntries, err := reader.getDisabledSupportIdentifiers()
-	if err != nil {
-		return nil, err
-	}
 
 	for _, supportSource := range supportSources {
 		// supportSource -> EntryWithCategory
@@ -153,8 +148,12 @@ func (reader *ConfigReader) readFromConfig(configuration Configuration) (Categor
 	}
 
 	log.Println("read SupportEntries")
+	disabledSupportEntries, err := reader.getDisabledSupportIdentifiers()
+	if err != nil {
+		return nil, err
+	}
 	// add support category
-	supportCategory, err := reader.readSupport(configuration.SupportSources)
+	supportCategory, err := reader.readSupport(configuration.SupportSources, disabledSupportEntries)
 	if err != nil {
 		log.Println("Error during support read:", err)
 	}
