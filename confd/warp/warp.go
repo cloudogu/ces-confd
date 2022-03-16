@@ -16,7 +16,7 @@ type Configuration struct {
 	Sources        []Source
 	Target         string
 	Order          confd.Order
-	SupportSources []SupportSource
+	SupportSources []SupportSource `yaml:"support"`
 }
 
 // Source in etcd
@@ -28,8 +28,9 @@ type Source struct {
 
 // Source for SupportEntries from yaml
 type SupportSource struct {
-	identifier string
-	external   bool
+	Identifier string `yaml:"identifier"`
+	External   bool   `yaml:"external"`
+	Href       string `yaml:"href"`
 }
 
 // Category category of multiple entries in the warp menu

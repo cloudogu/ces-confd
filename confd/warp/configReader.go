@@ -1,6 +1,8 @@
 package warp
 
 import (
+	"encoding/json"
+	"github.com/cloudogu/ces-confd/confd/util"
 	"log"
 
 	"sort"
@@ -14,6 +16,12 @@ type ConfigReader struct {
 	configuration Configuration
 	registry      registry.Registry
 }
+
+type DisabledSupportEntries struct {
+	name []string
+}
+
+const disableWarpSupportEntriesConfigurationKey = "/config/_global/disabled_warpmenu_support_entries"
 
 func (reader *ConfigReader) createCategories(entries []EntryWithCategory) Categories {
 	categories := map[string]*Category{}
@@ -88,25 +96,46 @@ func (reader *ConfigReader) readSource(source Source) (Categories, error) {
 	case "externals":
 		return reader.externalsReader(source)
 	}
-	return nil, errors.New("wrong source type")
+	return nil, errors.Errorf("wrong source type: %v", source.SourceType)
+}
+
+// /disabledKeys ["myClodugu"]
+func (reader *ConfigReader) getDisabledSupportIdentifiers() ([]string, error) {
+	disabledSupportEntries, err := reader.registry.Get(disableWarpSupportEntriesConfigurationKey)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to read configuration entry %s from etcd", disableWarpSupportEntriesConfigurationKey)
+	}
+
+	var disabledEntries []string
+	err = json.Unmarshal([]byte(disabledSupportEntries.Node.Value), &disabledEntries)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to unmarshal etcd key")
+	}
+	log.Printf("disabledEntries: %v", disabledEntries)
+
+	return disabledEntries, nil
 }
 
 func (reader *ConfigReader) readSupport(supportSources []SupportSource) (Categories, error) {
-
 	var supportEntries []EntryWithCategory
+
+	disabledSupportEntries, err := reader.getDisabledSupportIdentifiers()
+	if err != nil {
+		return nil, err
+	}
 
 	for _, supportSource := range supportSources {
 		// supportSource -> EntryWithCategory
-		entry := Entry{}
-		if supportSource.external {
-			entry = Entry{Title: supportSource.identifier, Target: TARGET_EXTERNAL}
-		} else {
-			entry = Entry{Title: supportSource.identifier, Target: TARGET_SELF}
+		if !util.StringInSlice(supportSource.Identifier, disabledSupportEntries) {
+			entry := Entry{}
+			if supportSource.External {
+				entry = Entry{Title: supportSource.Identifier, Href: supportSource.Href, Target: TARGET_EXTERNAL}
+			} else {
+				entry = Entry{Title: supportSource.Identifier, Href: supportSource.Href, Target: TARGET_SELF}
+			}
+			entryWithCategory := EntryWithCategory{Entry: entry, Category: "Support"}
+			supportEntries = append(supportEntries, entryWithCategory)
 		}
-
-		entryWithCategory := EntryWithCategory{Entry: entry, Category: "Support"}
-		log.Printf("suppport-entry with Category:%v and Entry %v", entryWithCategory.Category, entryWithCategory.Entry)
-		supportEntries = append(supportEntries, entryWithCategory)
 	}
 
 	return reader.createCategories(supportEntries), nil
@@ -130,6 +159,6 @@ func (reader *ConfigReader) readFromConfig(configuration Configuration) (Categor
 		log.Println("Error during support read:", err)
 	}
 	data.insertCategories(supportCategory)
-
+	log.Printf("supportCategory: %v", supportCategory)
 	return data, nil
 }

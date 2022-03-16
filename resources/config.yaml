@@ -11,14 +11,16 @@ warp:
   order:
     External Links: 2
     Support: 3
-
   support:
-    - identifdier: docsCloudoguComUrl
+    - identifier: docsCloudoguComUrl
       external: true
-    - identifdier: aboutCloudoguToken
+      href: /pfad/zu/extern
+    - identifier: aboutCloudoguToken
       external: false
-    - identifdier: myCloudogu
+      href: /pfad/zu/intern
+    - identifier: myCloudogu
       external: true
+      href: /pfad/zu/extern
 
 service:
   source:
