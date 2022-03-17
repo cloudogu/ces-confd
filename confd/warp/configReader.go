@@ -103,15 +103,14 @@ func (reader *ConfigReader) readSource(source Source) (Categories, error) {
 func (reader *ConfigReader) getDisabledSupportIdentifiers() ([]string, error) {
 	disabledSupportEntries, err := reader.registry.Get(disableWarpSupportEntriesConfigurationKey)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to read configuration entry %s from etcd", disableWarpSupportEntriesConfigurationKey)
+		return []string{}, errors.Wrapf(err, "failed to read configuration entry %s from etcd", disableWarpSupportEntriesConfigurationKey)
 	}
 
 	var disabledEntries []string
 	err = json.Unmarshal([]byte(disabledSupportEntries.Node.Value), &disabledEntries)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to unmarshal etcd key")
+		return []string{}, errors.Wrapf(err, "failed to unmarshal etcd key")
 	}
-	log.Printf("disabledEntries: %v", disabledEntries)
 
 	return disabledEntries, nil
 }
@@ -150,14 +149,18 @@ func (reader *ConfigReader) readFromConfig(configuration Configuration) (Categor
 	log.Println("read SupportEntries")
 	disabledSupportEntries, err := reader.getDisabledSupportIdentifiers()
 	if err != nil {
-		return nil, err
+		log.Printf("Warning, could not read etcd Key: %v. Err: %v", disableWarpSupportEntriesConfigurationKey, err)
 	}
 	// add support category
 	supportCategory, err := reader.readSupport(configuration.SupportSources, disabledSupportEntries)
 	if err != nil {
 		log.Println("Error during support read:", err)
 	}
+	if supportCategory.Len() == 0 {
+		log.Printf("support category is empty, no support category will be added to menu.json")
+		return data, nil
+	}
+
 	data.insertCategories(supportCategory)
-	log.Printf("supportCategory: %v", supportCategory)
 	return data, nil
 }
