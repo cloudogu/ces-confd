@@ -5,9 +5,22 @@ warp:
       tag: warp
     - path: /externals
       type: externals
+    - path: /support
+      type: support
   target: /var/www/html/warp/menu.json
   order:
     External Links: 2
+    Support: 3
+  support:
+    - identifier: docsCloudoguComUrl
+      external: true
+      href: /pfad/zu/extern
+    - identifier: aboutCloudoguToken
+      external: false
+      href: /pfad/zu/intern
+    - identifier: myCloudogu
+      external: true
+      href: /pfad/zu/extern
 
 service:
   source:

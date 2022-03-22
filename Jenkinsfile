@@ -1,8 +1,16 @@
 #!groovy
-@Library(['github.com/cloudogu/ces-build-lib@1.44.3'])
+@Library(['github.com/cloudogu/ces-build-lib@1.51.0'])
 import com.cloudogu.ces.cesbuildlib.*
 
 node('docker') {
+  Git git = new Git(this, "cesmarvin")
+  git.committerName = 'cesmarvin'
+  git.committerEmail = 'cesmarvin@cloudogu.com'
+  GitFlow gitflow = new GitFlow(this, git)
+  GitHub github = new GitHub(this, git)
+  Changelog changelog = new Changelog(this)
+  Docker docker = new Docker(this)
+  Gpg gpg = new Gpg(this, docker)
 
   repositoryOwner = 'cloudogu'
   projectName = 'ces-confd'
@@ -13,9 +21,11 @@ node('docker') {
     checkout scm
   }
 
-  docker.image('golang:1.14.13').inside("--volume ${WORKSPACE}:${projectPath} -e GOCACHE=/tmp/gocache") {
+  docker.image('golang:1.17.8').inside("--volume ${WORKSPACE}:${projectPath} -e GOCACHE=/tmp/gocache") {
     stage('Build') {
-      make 'clean package'
+      make 'clean package checksum'
+      archiveArtifacts 'target/**/*.tar.gz'
+      archiveArtifacts 'target/**/*.sha256sum'
     }
 
     stage('Unit Test') {
@@ -57,6 +67,31 @@ node('docker') {
       }
     }
   }
+
+  if (gitflow.isReleaseBranch()) {
+    String releaseVersion = git.getSimpleBranchName();
+
+    stage('Finish Release') {
+      gitflow.finishRelease(releaseVersion)
+    }
+
+    stage('Build after Release') {
+      git.checkout(releaseVersion)
+      make 'clean package checksum'
+    }
+
+    stage('Sign after Release'){
+      gpg.createSignature()
+    }
+
+    stage('Add Github-Release') {
+      github.createReleaseWithChangelog(releaseVersion, changelog)
+      github.addReleaseAsset("${releaseId}", "target/ces-confd-*.tar.gz")
+      github.addReleaseAsset("${releaseId}", "target/ces-confd.sha256sum")
+      github.addReleaseAsset("${releaseId}", "target/ces-confd.sha256sum.asc")
+    }
+  }
+
 }
 
 String projectPath

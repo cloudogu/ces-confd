@@ -17,6 +17,8 @@ GO_CALL=${GO_ENVIRONMENT} go
 PACKAGES=$(shell ${GO_CALL} list ./... | grep -v /vendor/)
 PACKAGES_FOR_INTEGRATION_TEST?=${PACKAGES}
 GO_BUILD_TAG_INTEGRATION_TEST?=integration
+GOMODULES=on
+UTILITY_BIN_PATH?=${WORKDIR}/.bin
 
 SRC:=$(shell find "${WORKDIR}" -type f -name "*.go" -not -path "./vendor/*")
 
@@ -35,6 +37,7 @@ endif
 
 YARN_TARGET=$(WORKDIR)/node_modules
 BOWER_TARGET?=$(WORKDIR)/public/vendor
+NODE_VERSION?=8
 
 UID_NR:=$(shell id -u)
 GID_NR:=$(shell id -g)
@@ -57,3 +60,21 @@ $(PASSWD): $(TMP_DIR)
 $(ETCGROUP): $(TMP_DIR)
 	@echo "root:x:0:" > $(ETCGROUP)
 	@echo "$(USER):x:$(GID_NR):" >> $(ETCGROUP)
+
+$(UTILITY_BIN_PATH):
+	@mkdir -p $@
+
+##@ General
+
+.PHONY: help
+help: ## Display this help.
+	@awk 'BEGIN {FS = ":.*##"; printf "\nUsage:\n  make \033[36m<target>\033[0m\n"} /^[a-zA-Z_0-9-]+:.*?##/ { printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2 } /^##@/ { printf "\n\033[1m%s\033[0m\n", substr($$0, 5) } ' $(MAKEFILE_LIST)
+
+.PHONY: info
+info: ## Print build information
+	@echo "dumping build information ..."
+	@echo "Version    : $(VERSION)"
+	@echo "Commit-ID  : $(COMMIT_ID)"
+	@echo "Environment: $(ENVIRONMENT)"
+	@echo "Branch     : $(BRANCH)"
+	@echo "Packages   : $(PACKAGES)"
