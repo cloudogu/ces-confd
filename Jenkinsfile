@@ -13,7 +13,7 @@ node('docker') {
     checkout scm
   }
 
-  docker.image('golang:1.14.13').inside("--volume ${WORKSPACE}:${projectPath} -e GOCACHE=/tmp/gocache") {
+  docker.image('golang:1.17.8').inside("--volume ${WORKSPACE}:${projectPath} -e GOCACHE=/tmp/gocache") {
     stage('Build') {
       make 'clean package'
     }

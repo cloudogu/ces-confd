@@ -5,6 +5,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Added
+- Added support sources which fill the "Support" Category in the warp menu [#20].
+- Implemented a filter with the etcd-key "/config/_global/disabled_warpmenu_support_entries" where one can define a list of support entries that should be NOT renderd in warpmenu  [#20].
 
 ## [v0.5.1](https://github.com/cloudogu/cesapp/releases/tag/v0.5.1) - 2021-02-24
 ### Fixed
