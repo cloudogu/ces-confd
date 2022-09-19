@@ -86,7 +86,12 @@ func (l *Loader) convertToService(value string) (*Service, error) {
 		raw["healthStatus"] = nil
 	}
 
-	return createService(raw), nil
+	service, err := createService(raw)
+	if err != nil {
+		return nil, err
+	}
+
+	return service, nil
 }
 
 func (l *Loader) createTemplateModel() (TemplateModel, error) {
