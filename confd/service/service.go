@@ -28,7 +28,7 @@ type Service struct {
 	URL          string
 	HealthStatus string
 	Location     string
-	Rewrite      Rewrite
+	Rewrite      *Rewrite `json:"rewrite,omitempty"`
 }
 
 // String returns a string representation of a service
@@ -87,7 +87,7 @@ func createService(raw confd.RawData) (*Service, error) {
 		URL:          "http://" + service,
 		HealthStatus: healthStatus,
 		Location:     location,
-		Rewrite:      *rule,
+		Rewrite:      rule,
 	}, nil
 }
 
