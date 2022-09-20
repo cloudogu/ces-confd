@@ -1,6 +1,7 @@
 package service
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 
@@ -15,17 +16,24 @@ var modificationActions = []string{"create", "delete", "update", "set"}
 // Services is a collection of service structs
 type Services []*Service
 
+// Rewrite is a rewrite rule for a service.
+type Rewrite struct {
+	Pattern string `json:"pattern"`
+	Rewrite string `json:"rewrite"`
+}
+
 // Service is a running service
 type Service struct {
-	Name         string
-	URL          string
-	HealthStatus string
-	Location     string
+	Name         string   `json:"name"`
+	URL          string   `json:"url"`
+	HealthStatus string   `json:"healthStatus"`
+	Location     string   `json:"location"`
+	Rewrite      *Rewrite `json:"rewrite,omitempty"`
 }
 
 // String returns a string representation of a service
 func (service *Service) String() string {
-	return fmt.Sprintf("{name=%s, URL=%s, HealthStatus=%s, Location=%s}", service.Name, service.URL, service.HealthStatus, service.Location)
+	return fmt.Sprintf("{name=%s, URL=%s, HealthStatus=%s, Location=%s, Rewrite=%+v}", service.Name, service.URL, service.HealthStatus, service.Location, service.Rewrite)
 }
 
 // Source of services path in etcd
@@ -46,15 +54,15 @@ type Configuration struct {
 	IgnoreHealth    bool `yaml:"ignore-health"`
 }
 
-func createService(raw confd.RawData) *Service {
+func createService(raw confd.RawData) (*Service, error) {
 	service := raw.GetStringValue("service")
 	if service == "" {
-		return nil
+		return nil, nil
 	}
 
 	name := raw.GetStringValue("name")
 	if name == "" {
-		return nil
+		return nil, nil
 	}
 
 	// an empty healthStatus is ok since maybe an old version of registrator is used
@@ -65,12 +73,22 @@ func createService(raw confd.RawData) *Service {
 		location = name
 	}
 
+	rewriteRule := raw.GetAttributeValue("rewrite")
+	rule := &Rewrite{}
+	if rewriteRule != "" {
+		err := json.Unmarshal([]byte(rewriteRule), rule)
+		if err != nil {
+			return nil, fmt.Errorf("failed to unmarshal rewrite rule: %w", err)
+		}
+	}
+
 	return &Service{
 		Name:         name,
 		URL:          "http://" + service,
 		HealthStatus: healthStatus,
 		Location:     location,
-	}
+		Rewrite:      rule,
+	}, nil
 }
 
 func hasTag(raw confd.RawData, tag string) (bool, error) {
