@@ -12,10 +12,15 @@ import (
 func TestServicesString(t *testing.T) {
 	services := Services{}
 
-	heartOfGold := &Service{Name: "heartOfGold", URL: "http://8.8.8.8", HealthStatus: "healthy", Location: "heartOfGoldLocation", Rewrite: &Rewrite{
-		Pattern: "rewriteme",
-		Rewrite: "iwillrewriteyou",
-	}}
+	heartOfGold := &Service{
+		Name: "heartOfGold",
+		URL:  "http://8.8.8.8", HealthStatus: "healthy",
+		Location: "heartOfGoldLocation",
+		Rewrite: &Rewrite{
+			Pattern: "rewriteme",
+			Rewrite: "iwillrewriteyou",
+		},
+	}
 	services = append(services, heartOfGold)
 	content := fmt.Sprintf("services: %v", services)
 	assert.Equal(t, "services: [{name=heartOfGold, URL=http://8.8.8.8, HealthStatus=healthy, Location=heartOfGoldLocation, Rewrite=&{Pattern:rewriteme Rewrite:iwillrewriteyou}}]", content)
@@ -34,7 +39,7 @@ func TestCreateService(t *testing.T) {
 		raw["attributes"] = attributes
 
 		service, err := createService(raw)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, "heartOfGold", service.Name)
 		assert.Equal(t, "http://8.8.8.8", service.URL)
 		assert.Equal(t, "heartOfGoldLocation", service.Location)
@@ -45,7 +50,7 @@ func TestCreateService(t *testing.T) {
 		raw["service"] = "8.8.8.8"
 
 		service, err := createService(raw)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		require.Nil(t, service)
 	})
 
@@ -54,7 +59,7 @@ func TestCreateService(t *testing.T) {
 		raw["name"] = "heartOfGold"
 
 		service, err := createService(raw)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		require.Nil(t, service)
 	})
 
@@ -63,7 +68,7 @@ func TestCreateService(t *testing.T) {
 		raw["service"] = "8.8.8.8"
 
 		service, err := createService(raw)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		require.Nil(t, service)
 	})
 
@@ -72,7 +77,7 @@ func TestCreateService(t *testing.T) {
 		raw["service"] = false
 
 		service, err := createService(raw)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		require.Nil(t, service)
 	})
 
@@ -82,7 +87,7 @@ func TestCreateService(t *testing.T) {
 		raw["service"] = "8.8.8.8"
 
 		service, err := createService(raw)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, "heartOfGold", service.Location)
 	})
 
@@ -92,7 +97,7 @@ func TestCreateService(t *testing.T) {
 		raw["attributes"] = "location:heartOfGoldLocation"
 
 		service, err := createService(raw)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, "heartOfGold", service.Location)
 	})
 
@@ -108,7 +113,7 @@ func TestCreateService(t *testing.T) {
 		raw["attributes"] = attributes
 
 		service, err := createService(raw)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, "heartOfGold", service.Name)
 		assert.Equal(t, "http://8.8.8.8", service.URL)
 		assert.Equal(t, "heartOfGold", service.Location)
@@ -123,7 +128,7 @@ func TestCreateService(t *testing.T) {
 		raw["attributes"] = attributes
 
 		service, err := createService(raw)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, "elasticsearch", service.Rewrite.Pattern)
 		assert.Equal(t, "test", service.Rewrite.Rewrite)
 	})
@@ -137,7 +142,7 @@ func TestCreateService(t *testing.T) {
 		raw["attributes"] = attributes
 
 		_, err := createService(raw)
-		assert.Error(t, err)
+		require.Error(t, err)
 		assert.Contains(t, err.Error(), "failed to unmarshal rewrite rule")
 	})
 }

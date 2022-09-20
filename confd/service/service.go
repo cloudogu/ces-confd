@@ -18,16 +18,16 @@ type Services []*Service
 
 // Rewrite is a rewrite rule for a service.
 type Rewrite struct {
-	Pattern string
-	Rewrite string
+	Pattern string `json:"pattern"`
+	Rewrite string `json:"rewrite"`
 }
 
 // Service is a running service
 type Service struct {
-	Name         string
-	URL          string
-	HealthStatus string
-	Location     string
+	Name         string   `json:"name"`
+	URL          string   `json:"url"`
+	HealthStatus string   `json:"healthStatus"`
+	Location     string   `json:"location"`
 	Rewrite      *Rewrite `json:"rewrite,omitempty"`
 }
 
