@@ -24,11 +24,12 @@ type Rewrite struct {
 
 // Service is a running service
 type Service struct {
-	Name         string   `json:"name"`
-	URL          string   `json:"url"`
-	HealthStatus string   `json:"healthStatus"`
-	Location     string   `json:"location"`
-	Rewrite      *Rewrite `json:"rewrite,omitempty"`
+	Name             string   `json:"name"`
+	URL              string   `json:"url"`
+	HealthStatus     string   `json:"healthStatus"`
+	Location         string   `json:"location"`
+	Rewrite          *Rewrite `json:"rewrite,omitempty"`
+	DisableBuffering bool     `json:"disableBuffering,omitempty"`
 }
 
 // String returns a string representation of a service
@@ -73,6 +74,12 @@ func createService(raw confd.RawData) (*Service, error) {
 		location = name
 	}
 
+	disableBufferingStringValue := raw.GetAttributeValue("disableBuffering")
+	var disableBuffering bool
+	if disableBufferingStringValue == "true" {
+		disableBuffering = true
+	}
+
 	rewriteRule := raw.GetAttributeValue("rewrite")
 	rule := &Rewrite{}
 	if rewriteRule != "" {
@@ -83,11 +90,12 @@ func createService(raw confd.RawData) (*Service, error) {
 	}
 
 	return &Service{
-		Name:         name,
-		URL:          "http://" + service,
-		HealthStatus: healthStatus,
-		Location:     location,
-		Rewrite:      rule,
+		Name:             name,
+		URL:              "http://" + service,
+		HealthStatus:     healthStatus,
+		Location:         location,
+		Rewrite:          rule,
+		DisableBuffering: disableBuffering,
 	}, nil
 }
 
