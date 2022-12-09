@@ -3,12 +3,11 @@ package service
 import (
 	"encoding/json"
 	"fmt"
-	"log"
-
 	"github.com/cloudogu/ces-confd/confd"
 	configRegistry "github.com/cloudogu/ces-confd/confd/registry"
 	"github.com/coreos/etcd/client"
 	"github.com/pkg/errors"
+	"log"
 )
 
 var modificationActions = []string{"create", "delete", "update", "set"}
@@ -24,12 +23,12 @@ type Rewrite struct {
 
 // Service is a running service
 type Service struct {
-	Name             string   `json:"name"`
-	URL              string   `json:"url"`
-	HealthStatus     string   `json:"healthStatus"`
-	Location         string   `json:"location"`
-	Rewrite          *Rewrite `json:"rewrite,omitempty"`
-	DisableBuffering bool     `json:"disableBuffering,omitempty"`
+	Name           string   `json:"name"`
+	URL            string   `json:"url"`
+	HealthStatus   string   `json:"healthStatus"`
+	Location       string   `json:"location"`
+	Rewrite        *Rewrite `json:"rewrite,omitempty"`
+	ProxyBuffering string   `json:"proxyBuffering,omitempty"`
 }
 
 // String returns a string representation of a service
@@ -55,7 +54,20 @@ type Configuration struct {
 	IgnoreHealth    bool `yaml:"ignore-health"`
 }
 
-func createService(raw confd.RawData) (*Service, error) {
+func getProxyBuffering(registry configRegistry.Registry, serviceName string) string {
+	if registry == nil {
+		log.Println("Registry is not defined. Falling back to default 'on'")
+		return "on"
+	}
+	enableBufferingResponse, _ := registry.Get(fmt.Sprintf("config/nginx/buffering/%s", serviceName))
+	keyIsUnset := enableBufferingResponse == nil || enableBufferingResponse.Node == nil
+	if keyIsUnset || enableBufferingResponse.Node.Value != "off" {
+		return "on"
+	}
+	return "off"
+}
+
+func createService(raw confd.RawData, registry configRegistry.Registry) (*Service, error) {
 	service := raw.GetStringValue("service")
 	if service == "" {
 		return nil, nil
@@ -74,12 +86,6 @@ func createService(raw confd.RawData) (*Service, error) {
 		location = name
 	}
 
-	disableBufferingStringValue := raw.GetAttributeValue("disableBuffering")
-	var disableBuffering bool
-	if disableBufferingStringValue == "true" {
-		disableBuffering = true
-	}
-
 	rewriteRule := raw.GetAttributeValue("rewrite")
 	rule := &Rewrite{}
 	if rewriteRule != "" {
@@ -90,12 +96,12 @@ func createService(raw confd.RawData) (*Service, error) {
 	}
 
 	return &Service{
-		Name:             name,
-		URL:              "http://" + service,
-		HealthStatus:     healthStatus,
-		Location:         location,
-		Rewrite:          rule,
-		DisableBuffering: disableBuffering,
+		Name:           name,
+		URL:            "http://" + service,
+		HealthStatus:   healthStatus,
+		Location:       location,
+		Rewrite:        rule,
+		ProxyBuffering: getProxyBuffering(registry, name),
 	}, nil
 }
 
