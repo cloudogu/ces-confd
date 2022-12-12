@@ -176,27 +176,27 @@ func Test_getProxyBuffering(t *testing.T) {
 		resp := getProxyBuffering(nil, "testservice")
 		assert.Equal(t, "on", resp)
 	})
-	t.Run("response is nil", func(t *testing.T) {
+	t.Run("should return 'on' if response is nil", func(t *testing.T) {
 		registry.On("Get", "config/nginx/buffering/testservice").Return(nil, testerror).Once()
 		resp := getProxyBuffering(registry, "testservice")
 		assert.Equal(t, "on", resp)
 	})
-	t.Run("node is nil", func(t *testing.T) {
+	t.Run("should return 'on' if node is nil", func(t *testing.T) {
 		registry.On("Get", "config/nginx/buffering/testservice").Return(&client.Response{Node: nil}, nil).Once()
 		resp := getProxyBuffering(registry, "testservice")
 		assert.Equal(t, "on", resp)
 	})
-	t.Run("value is on", func(t *testing.T) {
+	t.Run("should return 'on' if configured value is 'on'", func(t *testing.T) {
 		registry.On("Get", "config/nginx/buffering/testservice").Return(&client.Response{Node: &client.Node{Value: "on"}}, nil).Once()
 		resp := getProxyBuffering(registry, "testservice")
 		assert.Equal(t, "on", resp)
 	})
-	t.Run("value is off", func(t *testing.T) {
+	t.Run("should return 'off' if configured value is 'off'", func(t *testing.T) {
 		registry.On("Get", "config/nginx/buffering/testservice").Return(&client.Response{Node: &client.Node{Value: "off"}}, nil).Once()
 		resp := getProxyBuffering(registry, "testservice")
 		assert.Equal(t, "off", resp)
 	})
-	t.Run("value is gary", func(t *testing.T) {
+	t.Run("should return 'on' if value is 'gary'", func(t *testing.T) {
 		registry.On("Get", "config/nginx/buffering/testservice").Return(&client.Response{Node: &client.Node{Value: "gary"}}, nil).Once()
 		resp := getProxyBuffering(registry, "testservice")
 		assert.Equal(t, "on", resp)
