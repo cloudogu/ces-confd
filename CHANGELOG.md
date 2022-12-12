@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v0.8.0](https://github.com/cloudogu/cesapp/releases/tag/v0.8.0) - 2022-12-12
+### Added
+- Added attribute to enable / disable buffering for specific dogus (#24)
+
 ## [v0.7.0](https://github.com/cloudogu/cesapp/releases/tag/v0.7.0) - 2022-09-20
 ### Added
 - Added service attribute `rewrite` [#22]
