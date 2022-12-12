@@ -86,7 +86,7 @@ func (l *Loader) convertToService(value string) (*Service, error) {
 		raw["healthStatus"] = nil
 	}
 
-	service, err := createService(raw)
+	service, err := createService(raw, l.registry)
 	if err != nil {
 		return nil, err
 	}

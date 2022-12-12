@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Added service attribute `rewrite` [#22]
   - Exported services are now able to define rewrite rules for nginx
+- Added attribute to enable / disable buffering for specific dogus (#24)
 
 ## [v0.6.0] - 2022-03-22
 ### Added
