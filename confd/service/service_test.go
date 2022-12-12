@@ -172,7 +172,7 @@ func TestCreateService(t *testing.T) {
 func Test_getProxyBuffering(t *testing.T) {
 	testerror := errors.New("testerror")
 	registry := &mocks.Registry{}
-	t.Run("registry is nil", func(t *testing.T) {
+	t.Run("should return 'on' if registry is nil", func(t *testing.T) {
 		resp := getProxyBuffering(nil, "testservice")
 		assert.Equal(t, "on", resp)
 	})
