@@ -6,11 +6,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Added
-- Added service attribute `rewrite` [#22]
-  - Exported services are now able to define rewrite rules for nginx
 - Added attribute to enable / disable buffering for specific dogus (#24)
 
-## [v0.6.0] - 2022-03-22
+## [v0.7.0](https://github.com/cloudogu/cesapp/releases/tag/v0.7.0) - 2022-09-20
+### Added
+- Added service attribute `rewrite` [#22]
+- Exported services are now able to define rewrite rules for nginx [#22]
+
+## [v0.6.0](https://github.com/cloudogu/cesapp/releases/tag/v0.6.0) - 2022-03-22
 ### Added
 - Added support sources which fill the "Support" Category in the warp menu [#20].
 - Implemented a filter with the etcd-key "/config/_global/disabled_warpmenu_support_entries" where one can define a list of support entries that should be NOT renderd in warpmenu  [#20].
