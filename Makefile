@@ -1,6 +1,6 @@
 # Set these to the desired values
 ARTIFACT_ID=ces-confd
-VERSION=0.7.0
+VERSION=0.8.0
 
 MAKEFILES_VERSION=7.0.1
 GOTAG=1.17.8
