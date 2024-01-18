@@ -79,13 +79,12 @@ node('docker') {
     if (gitflow.isReleaseBranch()) {
       String releaseVersion = git.getSimpleBranchName();
 
-      stage('Finish Release') {
-        gitflow.finishRelease(releaseVersion)
+      stage('Build after Release') {
+        make 'clean package checksum'
       }
 
-      stage('Build after Release') {
-        git.checkout(releaseVersion)
-        make 'clean package checksum'
+      stage('Finish Release') {
+        gitflow.finishRelease(releaseVersion)
       }
 
       stage('Sign after Release'){

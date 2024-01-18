@@ -5,8 +5,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Fixed
+- Fix release pipeline (#28)
 
 ## [v0.8.1] - 2024-01-18
+
+### This release is broken and not available due to a broken release pipeline
+
 ### Fixed
 - Set "Rewrite" to "nil" if the rewrite rule is empty (#26)
   - This prevents creating unused rewrite rules in nginx
