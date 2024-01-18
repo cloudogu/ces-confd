@@ -96,9 +96,9 @@ node('docker') {
 
       stage('Add Github-Release') {
         github.createReleaseWithChangelog(releaseVersion, changelog)
-        github.addReleaseAsset("${releaseId}", "target/ces-confd-*.tar.gz")
-        github.addReleaseAsset("${releaseId}", "target/ces-confd.sha256sum")
-        github.addReleaseAsset("${releaseId}", "target/ces-confd.sha256sum.asc")
+        github.addReleaseAsset("${releaseVersion}", "target/ces-confd-*.tar.gz")
+        github.addReleaseAsset("${releaseVersion}", "target/ces-confd.sha256sum")
+        github.addReleaseAsset("${releaseVersion}", "target/ces-confd.sha256sum.asc")
       }
     }
   }
