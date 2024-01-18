@@ -155,7 +155,7 @@ func TestCreateService(t *testing.T) {
 		registry.AssertExpectations(t)
 	})
 
-	t.Run("should return error with invalid rewrite rul", func(t *testing.T) {
+	t.Run("should return error with invalid rewrite rule", func(t *testing.T) {
 		raw["name"] = "heartOfGold"
 		raw["service"] = "8.8.8.8"
 		attributes := map[string]interface{}{
@@ -166,6 +166,16 @@ func TestCreateService(t *testing.T) {
 		_, err := createService(raw, nil)
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "failed to unmarshal rewrite rule")
+	})
+
+	t.Run("should return nil rewrite with empty rewrite rule", func(t *testing.T) {
+		raw["name"] = "heartOfGold"
+		raw["service"] = "8.8.8.8"
+		raw["attributes"] = map[string]interface{}{}
+
+		service, err := createService(raw, nil)
+		require.NoError(t, err)
+		assert.Nil(t, service.Rewrite)
 	})
 }
 

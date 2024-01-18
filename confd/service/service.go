@@ -87,8 +87,9 @@ func createService(raw confd.RawData, registry configRegistry.Registry) (*Servic
 	}
 
 	rewriteRule := raw.GetAttributeValue("rewrite")
-	rule := &Rewrite{}
+	var rule *Rewrite = nil
 	if rewriteRule != "" {
+		rule = &Rewrite{}
 		err := json.Unmarshal([]byte(rewriteRule), rule)
 		if err != nil {
 			return nil, fmt.Errorf("failed to unmarshal rewrite rule: %w", err)
