@@ -6,7 +6,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v0.8.2] - 2024-01-18
+### Fixed
+- Fix release pipeline (#28)
+
 ## [v0.8.1] - 2024-01-18
+
+### This release is broken and not available due to a broken release pipeline
+
 ### Fixed
 - Set "Rewrite" to "nil" if the rewrite rule is empty (#26)
   - This prevents creating unused rewrite rules in nginx

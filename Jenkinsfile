@@ -19,13 +19,14 @@ node('docker') {
     projectPath = "/go/src/github.com/${repositoryOwner}/${projectName}/"
     githubCredentialsId = 'sonarqube-gh'
 
+    goVersion= "1.17.8"
 
 
     stage('Checkout') {
       checkout scm
     }
 
-    docker.image('golang:1.17.8').inside("--volume ${WORKSPACE}:${projectPath} -e GOCACHE=/tmp/gocache") {
+    docker.image("golang:${goVersion}").inside("--volume ${WORKSPACE}:${projectPath} -e GOCACHE=/tmp/gocache") {
       stage('Build') {
         make 'clean package checksum'
         archiveArtifacts 'target/**/*.tar.gz'
@@ -79,13 +80,14 @@ node('docker') {
     if (gitflow.isReleaseBranch()) {
       String releaseVersion = git.getSimpleBranchName();
 
-      stage('Finish Release') {
-        gitflow.finishRelease(releaseVersion)
+      stage('Build after Release') {
+        docker.image("golang:${goVersion}").inside("--volume ${WORKSPACE}:${projectPath} -e GOCACHE=/tmp/gocache") {
+          make 'clean package checksum'
+        }
       }
 
-      stage('Build after Release') {
-        git.checkout(releaseVersion)
-        make 'clean package checksum'
+      stage('Finish Release') {
+        gitflow.finishRelease(releaseVersion)
       }
 
       stage('Sign after Release'){
