@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v0.9.0] - 2024-01-26
+
 ### Added
 - Added new configuration (`/config/_global/block_warpmenu_support_category`) for completely blocking the support entries in the warp menu (#31)
 - Added new configuration (`/config/_global/allowed_warpmenu_support_entries`) for explicitly allowing support entries in the warp menu (#31)
