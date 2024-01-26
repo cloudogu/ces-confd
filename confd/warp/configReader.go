@@ -2,8 +2,10 @@ package warp
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/cloudogu/ces-confd/confd/util"
 	"log"
+	"strconv"
 
 	"sort"
 
@@ -21,7 +23,9 @@ type DisabledSupportEntries struct {
 	name []string
 }
 
-const disableWarpSupportEntriesConfigurationKey = "/config/_global/disabled_warpmenu_support_entries"
+const blockWarpSupportCategoryConfigurationKey = "/config/_global/block_warpmenu_support_category"
+const disabledWarpSupportEntriesConfigurationKey = "/config/_global/disabled_warpmenu_support_entries"
+const allowedWarpSupportEntriesConfigurationKey = "/config/_global/allowed_warpmenu_support_entries"
 
 func (reader *ConfigReader) createCategories(entries []EntryWithCategory) Categories {
 	categories := map[string]*Category{}
@@ -99,40 +103,52 @@ func (reader *ConfigReader) readSource(source Source) (Categories, error) {
 	return nil, errors.Errorf("wrong source type: %v", source.SourceType)
 }
 
-// /disabledKeys ["myClodugu"]
-func (reader *ConfigReader) getDisabledSupportIdentifiers() ([]string, error) {
-	disabledSupportEntries, err := reader.registry.Get(disableWarpSupportEntriesConfigurationKey)
+func (reader *ConfigReader) readStrings(registryKey string) ([]string, error) {
+	entry, err := reader.registry.Get(registryKey)
 	if err != nil {
-		return []string{}, errors.Wrapf(err, "failed to read configuration entry %s from etcd", disableWarpSupportEntriesConfigurationKey)
+		return []string{}, fmt.Errorf("failed to read configuration entry %s from etcd: %w", registryKey, err)
 	}
 
-	var disabledEntries []string
-	err = json.Unmarshal([]byte(disabledSupportEntries.Node.Value), &disabledEntries)
+	var strings []string
+	err = json.Unmarshal([]byte(entry.Node.Value), &strings)
 	if err != nil {
-		return []string{}, errors.Wrapf(err, "failed to unmarshal etcd key")
+		return []string{}, fmt.Errorf("failed to unmarshal etcd key to string slice: %w", err)
 	}
 
-	return disabledEntries, nil
+	return strings, nil
 }
 
-func (reader *ConfigReader) readSupport(supportSources []SupportSource, disabledSupportEntries []string) (Categories, error) {
+func (reader *ConfigReader) readBool(registryKey string) (bool, error) {
+	entry, err := reader.registry.Get(registryKey)
+	if err != nil {
+		return false, fmt.Errorf("failed to read configuration entry %s from etcd: %w", registryKey, err)
+	}
+
+	boolValue, err := strconv.ParseBool(entry.Node.Value)
+	if err != nil {
+		return false, fmt.Errorf("failed to unmarshal etcd key to bool: %w", err)
+	}
+
+	return boolValue, nil
+}
+
+func (reader *ConfigReader) readSupport(supportSources []SupportSource, blocked bool, disabledEntries []string, allowedEntries []string) Categories {
 	var supportEntries []EntryWithCategory
 
 	for _, supportSource := range supportSources {
-		// supportSource -> EntryWithCategory
-		if !util.StringInSlice(supportSource.Identifier, disabledSupportEntries) {
-			entry := Entry{}
+		if (blocked && util.StringInSlice(supportSource.Identifier, allowedEntries)) || (!blocked && !util.StringInSlice(supportSource.Identifier, disabledEntries)) {
+			// support category is blocked, but this entry is explicitly allowed OR support category is NOT blocked and this entry is NOT explicitly disabled
+
+			entry := Entry{Title: supportSource.Identifier, Href: supportSource.Href, Target: TARGET_SELF}
 			if supportSource.External {
-				entry = Entry{Title: supportSource.Identifier, Href: supportSource.Href, Target: TARGET_EXTERNAL}
-			} else {
-				entry = Entry{Title: supportSource.Identifier, Href: supportSource.Href, Target: TARGET_SELF}
+				entry.Target = TARGET_EXTERNAL
 			}
-			entryWithCategory := EntryWithCategory{Entry: entry, Category: "Support"}
-			supportEntries = append(supportEntries, entryWithCategory)
+
+			supportEntries = append(supportEntries, EntryWithCategory{Entry: entry, Category: "Support"})
 		}
 	}
 
-	return reader.createCategories(supportEntries), nil
+	return reader.createCategories(supportEntries)
 }
 
 func (reader *ConfigReader) readFromConfig(configuration Configuration) (Categories, error) {
@@ -147,15 +163,25 @@ func (reader *ConfigReader) readFromConfig(configuration Configuration) (Categor
 	}
 
 	log.Println("read SupportEntries")
-	disabledSupportEntries, err := reader.getDisabledSupportIdentifiers()
+
+	isSupportCategoryBlocked, err := reader.readBool(blockWarpSupportCategoryConfigurationKey)
 	if err != nil {
-		log.Printf("Warning, could not read etcd Key: %v. Err: %v", disableWarpSupportEntriesConfigurationKey, err)
+		log.Printf("Warning, could not read etcd Key: %v. Err: %v", blockWarpSupportCategoryConfigurationKey, err)
 	}
+
+	disabledSupportEntries, err := reader.readStrings(disabledWarpSupportEntriesConfigurationKey)
+	if err != nil {
+		log.Printf("Warning, could not read etcd Key: %v. Err: %v", disabledWarpSupportEntriesConfigurationKey, err)
+	}
+
+	allowedSupportEntries, err := reader.readStrings(allowedWarpSupportEntriesConfigurationKey)
+	if err != nil {
+		log.Printf("Warning, could not read etcd Key: %v. Err: %v", allowedWarpSupportEntriesConfigurationKey, err)
+	}
+
 	// add support category
-	supportCategory, err := reader.readSupport(configuration.SupportSources, disabledSupportEntries)
-	if err != nil {
-		log.Println("Error during support read:", err)
-	}
+	supportCategory := reader.readSupport(configuration.SupportSources, isSupportCategoryBlocked, disabledSupportEntries, allowedSupportEntries)
+
 	if supportCategory.Len() == 0 {
 		log.Printf("support category is empty, no support category will be added to menu.json")
 		return data, nil
