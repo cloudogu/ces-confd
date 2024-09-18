@@ -1,4 +1,3 @@
-![Cloudogu logo](https://cloudogu.com/images/logo.png)
 # Cloudogu ecosystem
 https://cloudogu.com
 
