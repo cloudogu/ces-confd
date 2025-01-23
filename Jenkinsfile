@@ -19,7 +19,7 @@ node('docker') {
     projectPath = "/go/src/github.com/${repositoryOwner}/${projectName}/"
     githubCredentialsId = 'sonarqube-gh'
 
-    goVersion= "1.17.8"
+    goVersion= "1.23.2"
 
 
     stage('Checkout') {
