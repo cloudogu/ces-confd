@@ -2,10 +2,9 @@ package warp
 
 import (
 	"bytes"
-	"github.com/cloudogu/ces-confd/confd/registry/mocks"
-	"github.com/coreos/etcd/client"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.etcd.io/etcd/client/v2"
 	"log"
 	"os"
 	"testing"
@@ -105,7 +104,7 @@ func TestConfigReader_readSupport(t *testing.T) {
 
 func TestConfigReader_readFromConfig(t *testing.T) {
 	t.Run("should read categories from config", func(t *testing.T) {
-		mockRegistry := &mocks.Registry{}
+		mockRegistry := newMockConfigRegistry(t)
 		mockRegistry.On("Get", blockWarpSupportCategoryConfigurationKey).
 			Return(&client.Response{Node: &client.Node{Value: "false"}}, nil)
 		mockRegistry.On("Get", disabledWarpSupportEntriesConfigurationKey).
@@ -141,7 +140,7 @@ func TestConfigReader_readFromConfig(t *testing.T) {
 	})
 
 	t.Run("should log errors when failing to read from registry client", func(t *testing.T) {
-		mockRegistry := &mocks.Registry{}
+		mockRegistry := newMockConfigRegistry(t)
 		mockRegistry.On("Get", blockWarpSupportCategoryConfigurationKey).Return(nil, assert.AnError)
 		mockRegistry.On("Get", disabledWarpSupportEntriesConfigurationKey).Return(nil, assert.AnError)
 		mockRegistry.On("Get", allowedWarpSupportEntriesConfigurationKey).Return(nil, assert.AnError)
@@ -178,7 +177,7 @@ func TestConfigReader_readFromConfig(t *testing.T) {
 func TestConfigReader_readStrings(t *testing.T) {
 	t.Run("should successfully read strings", func(t *testing.T) {
 		response := client.Response{Node: &client.Node{Value: "[\"lorem\", \"ipsum\"]"}}
-		mockRegistry := &mocks.Registry{}
+		mockRegistry := newMockConfigRegistry(t)
 		mockRegistry.On("Get", "/config/_global/disabled_warpmenu_support_entries").Return(&response, nil)
 
 		reader := &ConfigReader{
@@ -191,7 +190,7 @@ func TestConfigReader_readStrings(t *testing.T) {
 	})
 
 	t.Run("should fail reading from registry", func(t *testing.T) {
-		mockRegistry := &mocks.Registry{}
+		mockRegistry := newMockConfigRegistry(t)
 		mockRegistry.On("Get", "/config/_global/disabled_warpmenu_support_entries").Return(nil, assert.AnError)
 
 		reader := &ConfigReader{
@@ -207,7 +206,7 @@ func TestConfigReader_readStrings(t *testing.T) {
 
 	t.Run("should fail unmarshalling", func(t *testing.T) {
 		response := client.Response{Node: &client.Node{Value: "not-a-string-array 123"}}
-		mockRegistry := &mocks.Registry{}
+		mockRegistry := newMockConfigRegistry(t)
 		mockRegistry.On("Get", "/config/_global/disabled_warpmenu_support_entries").Return(&response, nil)
 
 		reader := &ConfigReader{
@@ -224,7 +223,7 @@ func TestConfigReader_readStrings(t *testing.T) {
 func TestConfigReader_readBool(t *testing.T) {
 	t.Run("should successfully read true bool", func(t *testing.T) {
 		response := client.Response{Node: &client.Node{Value: "true"}}
-		mockRegistry := &mocks.Registry{}
+		mockRegistry := newMockConfigRegistry(t)
 		mockRegistry.On("Get", "/config/_global/myBool").Return(&response, nil)
 
 		reader := &ConfigReader{
@@ -238,7 +237,7 @@ func TestConfigReader_readBool(t *testing.T) {
 
 	t.Run("should successfully read false bool", func(t *testing.T) {
 		response := client.Response{Node: &client.Node{Value: "false"}}
-		mockRegistry := &mocks.Registry{}
+		mockRegistry := newMockConfigRegistry(t)
 		mockRegistry.On("Get", "/config/_global/myBool").Return(&response, nil)
 
 		reader := &ConfigReader{
@@ -251,7 +250,7 @@ func TestConfigReader_readBool(t *testing.T) {
 	})
 
 	t.Run("should fail reading from registry", func(t *testing.T) {
-		mockRegistry := &mocks.Registry{}
+		mockRegistry := newMockConfigRegistry(t)
 		mockRegistry.On("Get", "/config/_global/myBool").Return(nil, assert.AnError)
 
 		reader := &ConfigReader{
@@ -267,7 +266,7 @@ func TestConfigReader_readBool(t *testing.T) {
 
 	t.Run("should fail unmarshalling", func(t *testing.T) {
 		response := client.Response{Node: &client.Node{Value: "not a bool"}}
-		mockRegistry := &mocks.Registry{}
+		mockRegistry := newMockConfigRegistry(t)
 		mockRegistry.On("Get", "/config/_global/myBool").Return(&response, nil)
 
 		reader := &ConfigReader{

@@ -8,8 +8,8 @@ import (
 	"path"
 
 	confRegistry "github.com/cloudogu/ces-confd/confd/registry"
-	"github.com/coreos/etcd/client"
 	"github.com/pkg/errors"
+	"go.etcd.io/etcd/client/v2"
 )
 
 // Source of maintenance path in etcd

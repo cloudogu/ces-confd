@@ -1,6 +1,6 @@
 package registry
 
-import "github.com/coreos/etcd/client"
+import "go.etcd.io/etcd/client/v2"
 
 // Config represents the configuration of a Registry
 type Config struct {

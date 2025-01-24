@@ -4,9 +4,8 @@ import (
 	"errors"
 	"fmt"
 	"github.com/cloudogu/ces-confd/confd"
-	"github.com/cloudogu/ces-confd/confd/registry/mocks"
-	"github.com/coreos/etcd/client"
 	"github.com/stretchr/testify/require"
+	"go.etcd.io/etcd/client/v2"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -147,7 +146,7 @@ func TestCreateService(t *testing.T) {
 	t.Run("should return created service with buffering off", func(t *testing.T) {
 		raw["name"] = "heartOfGold"
 		raw["service"] = "8.8.8.8"
-		registry := &mocks.Registry{}
+		registry := newMockConfigRegistry(t)
 		registry.On("Get", "config/nginx/buffering/heartOfGold").Return(&client.Response{Node: &client.Node{Value: "off"}}, nil)
 		service, err := createService(raw, registry)
 		require.NoError(t, err)
@@ -181,7 +180,7 @@ func TestCreateService(t *testing.T) {
 
 func Test_getProxyBuffering(t *testing.T) {
 	testerror := errors.New("testerror")
-	registry := &mocks.Registry{}
+	registry := newMockConfigRegistry(t)
 	t.Run("should return 'on' if registry is nil", func(t *testing.T) {
 		resp := getProxyBuffering(nil, "testservice")
 		assert.Equal(t, "on", resp)

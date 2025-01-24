@@ -3,7 +3,6 @@ package warp
 import (
 	"encoding/json"
 
-	"github.com/cloudogu/ces-confd/confd/registry"
 	"github.com/pkg/errors"
 )
 
@@ -14,7 +13,7 @@ type externalEntry struct {
 	Category    string
 }
 
-func readAndUnmarshalExternal(registry registry.Registry, key string) (EntryWithCategory, error) {
+func readAndUnmarshalExternal(registry configRegistry, key string) (EntryWithCategory, error) {
 	externalBytes, err := readExternalAsBytes(registry, key)
 	if err != nil {
 		return EntryWithCategory{}, nil
@@ -23,7 +22,7 @@ func readAndUnmarshalExternal(registry registry.Registry, key string) (EntryWith
 	return unmarshalExternal(externalBytes)
 }
 
-func readExternalAsBytes(registry registry.Registry, key string) ([]byte, error) {
+func readExternalAsBytes(registry configRegistry, key string) ([]byte, error) {
 	resp, err := registry.Get(key)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to read key %s from etcd", key)

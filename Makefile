@@ -3,7 +3,7 @@ ARTIFACT_ID=ces-confd
 VERSION=0.10.0
 
 MAKEFILES_VERSION=9.5.3
-GOTAG=1.17.8
+GOTAG=1.23.5
 
 .DEFAULT_GOAL:=compile
 
@@ -21,3 +21,4 @@ include build/make/clean.mk
 include build/make/release.mk
 include build/make/package-tar.mk
 include build/make/digital-signature.mk
+include build/make/mocks.mk

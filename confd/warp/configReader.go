@@ -4,19 +4,23 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/cloudogu/ces-confd/confd/util"
+	"go.etcd.io/etcd/client/v2"
 	"log"
 	"strconv"
 
 	"sort"
 
-	"github.com/cloudogu/ces-confd/confd/registry"
 	"github.com/pkg/errors"
 )
+
+type configRegistry interface {
+	Get(key string) (*client.Response, error)
+}
 
 // ConfigReader reads the configuration for the warp menu from etcd
 type ConfigReader struct {
 	configuration Configuration
-	registry      registry.Registry
+	registry      configRegistry
 }
 
 type DisabledSupportEntries struct {

@@ -4,9 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/cloudogu/ces-confd/confd"
-	configRegistry "github.com/cloudogu/ces-confd/confd/registry"
-	"github.com/coreos/etcd/client"
 	"github.com/pkg/errors"
+	"go.etcd.io/etcd/client/v2"
 	"log"
 )
 
@@ -54,7 +53,7 @@ type Configuration struct {
 	IgnoreHealth    bool `yaml:"ignore-health"`
 }
 
-func getProxyBuffering(registry configRegistry.Registry, serviceName string) string {
+func getProxyBuffering(registry configRegistry, serviceName string) string {
 	if registry == nil {
 		log.Println("Registry is not defined. Falling back to default 'on'")
 		return "on"
@@ -67,7 +66,7 @@ func getProxyBuffering(registry configRegistry.Registry, serviceName string) str
 	return "off"
 }
 
-func createService(raw confd.RawData, registry configRegistry.Registry) (*Service, error) {
+func createService(raw confd.RawData, registry configRegistry) (*Service, error) {
 	service := raw.GetStringValue("service")
 	if service == "" {
 		return nil, nil
@@ -148,7 +147,7 @@ func reloadServicesIfNecessary(loader *Loader, resp *client.Response) {
 }
 
 // Run creates the configuration for the services and updates the configuration whenever a service changed
-func Run(conf Configuration, registry configRegistry.Registry) {
+func Run(conf Configuration, registry configRegistry) {
 	serviceChannel := make(chan *client.Response)
 	maintenanceChannel := make(chan *client.Response)
 	loader := &Loader{

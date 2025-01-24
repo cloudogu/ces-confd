@@ -6,8 +6,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/coreos/etcd/client"
 	"github.com/pkg/errors"
+	"go.etcd.io/etcd/client/v2"
 	"golang.org/x/net/context"
 )
 
