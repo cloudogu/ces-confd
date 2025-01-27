@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [v0.11.0] - 2025-01-27
 ### Changed
 - Upgrade go-version to v1.23.5 to fix CVEs in v1.17.13 which no longer receives updates (#36)
   - Replace the `github.com/coreos/etcd/client`-module with `go.etcd.io/etcd/client/v2` to be compatible with new go versions
