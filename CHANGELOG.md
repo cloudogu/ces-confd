@@ -6,7 +6,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Changed
-- Upgrade go-version to v1.23.5
+- Upgrade go-version to v1.23.5 to fix CVEs in v1.17.13 which no longer receives updates (#36)
+  - Replace the `github.com/coreos/etcd/client`-module with `go.etcd.io/etcd/client/v2` to be compatible with new go versions
 
 ## [v0.10.0] - 2024-09-18
 ### Changed
