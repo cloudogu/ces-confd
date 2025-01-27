@@ -1,17 +1,15 @@
 package service
 
 import (
-	"github.com/cloudogu/ces-confd/confd/registry/mocks"
-	"github.com/stretchr/testify/mock"
-	"testing"
-
-	"github.com/coreos/etcd/client"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	"go.etcd.io/etcd/client/v2"
+	"testing"
 )
 
 func TestConvertTotServicesShouldNotFailOnError(t *testing.T) {
-	registry := &mocks.Registry{}
+	registry := newMockConfigRegistry(t)
 	registry.On("Get", mock.Anything).Return(&client.Response{Node: &client.Node{Value: "on"}}, nil)
 	loader := &Loader{config: Configuration{Tag: "webapp"}, registry: registry}
 	heartOfGold := &client.Node{
@@ -35,7 +33,7 @@ func TestConvertTotServicesShouldNotFailOnError(t *testing.T) {
 }
 
 func TestConvertToService(t *testing.T) {
-	registry := &mocks.Registry{}
+	registry := newMockConfigRegistry(t)
 	registry.On("Get", mock.Anything).Return(&client.Response{Node: &client.Node{Value: "on"}}, nil)
 	loader := &Loader{config: Configuration{Tag: "webapp"}, registry: registry}
 	service, err := loader.convertToService("{\"name\": \"heartOfGold\", \"service\": \"8.8.8.8\", \"tags\": [\"webapp\"],\"healthStatus\":\"healthy\",\"attributes\":{\"day\":\"Friday\",\"location\":\"heartOfGoldLocation\"}}")
@@ -45,7 +43,7 @@ func TestConvertToService(t *testing.T) {
 }
 
 func TestConvertToServiceWithEmptyHealth(t *testing.T) {
-	registry := &mocks.Registry{}
+	registry := newMockConfigRegistry(t)
 	registry.On("Get", mock.Anything).Return(&client.Response{Node: &client.Node{Value: "on"}}, nil)
 	loader := &Loader{config: Configuration{Tag: "webapp"}, registry: registry}
 	service, err := loader.convertToService("{\"name\": \"heartOfGold\", \"service\": \"8.8.8.8\", \"tags\": [\"webapp\"]}")
@@ -55,7 +53,7 @@ func TestConvertToServiceWithEmptyHealth(t *testing.T) {
 }
 
 func TestConvertToServiceWithIgnoredHealth(t *testing.T) {
-	registry := &mocks.Registry{}
+	registry := newMockConfigRegistry(t)
 	registry.On("Get", mock.Anything).Return(&client.Response{Node: &client.Node{Value: "on"}}, nil)
 	loader := &Loader{config: Configuration{Tag: "webapp", IgnoreHealth: true}, registry: registry}
 	service, err := loader.convertToService("{\"name\": \"heartOfGold\", \"service\": \"8.8.8.8\", \"tags\": [\"webapp\"],\"healthStatus\":\"healthy\"}")
@@ -65,7 +63,7 @@ func TestConvertToServiceWithIgnoredHealth(t *testing.T) {
 }
 
 func TestConvertToServiceWithoutTag(t *testing.T) {
-	registry := &mocks.Registry{}
+	registry := newMockConfigRegistry(t)
 	registry.On("Get", mock.Anything).Return(&client.Response{Node: &client.Node{Value: "on"}}, nil)
 	loader := &Loader{config: Configuration{}, registry: registry}
 	service, err := loader.convertToService("{\"name\": \"heartOfGold\", \"service\": \"8.8.8.8\"}")
@@ -96,7 +94,7 @@ func TestConvertToServiceWithNonArrayTags(t *testing.T) {
 }
 
 func TestHasServiceChanged(t *testing.T) {
-	registry := &mocks.Registry{}
+	registry := newMockConfigRegistry(t)
 	registry.On("Get", mock.Anything).Return(&client.Response{Node: &client.Node{Value: "on"}}, nil)
 
 	loader := &Loader{config: Configuration{Tag: "webapp"}, registry: registry}
@@ -134,7 +132,7 @@ func TestHasServiceChangedIgnoreDirectories(t *testing.T) {
 }
 
 func TestHasServiceChangedDeleteAction(t *testing.T) {
-	registry := &mocks.Registry{}
+	registry := newMockConfigRegistry(t)
 	registry.On("Get", mock.Anything).Return(&client.Response{Node: &client.Node{Value: "on"}}, nil)
 	loader := &Loader{config: Configuration{Tag: "webapp"}, registry: registry}
 
@@ -154,7 +152,7 @@ func TestHasServiceChangedDeleteAction(t *testing.T) {
 }
 
 func TestHasServiceChangedUpdateAction(t *testing.T) {
-	registry := &mocks.Registry{}
+	registry := newMockConfigRegistry(t)
 	registry.On("Get", mock.Anything).Return(&client.Response{Node: &client.Node{Value: "on"}}, nil)
 	loader := &Loader{config: Configuration{Tag: "webapp"}, registry: registry}
 	node := client.Node{
@@ -179,7 +177,7 @@ func TestHasServiceChangedUpdateAction(t *testing.T) {
 }
 
 func TestHasServiceChangedSetAction(t *testing.T) {
-	registry := &mocks.Registry{}
+	registry := newMockConfigRegistry(t)
 	registry.On("Get", mock.Anything).Return(&client.Response{Node: &client.Node{Value: "on"}}, nil)
 	loader := &Loader{config: Configuration{Tag: "webapp"}, registry: registry}
 	node := client.Node{
@@ -204,7 +202,7 @@ func TestHasServiceChangedSetAction(t *testing.T) {
 }
 
 func TestHasServiceChangedSetPreviousNonService(t *testing.T) {
-	registry := &mocks.Registry{}
+	registry := newMockConfigRegistry(t)
 	registry.On("Get", mock.Anything).Return(&client.Response{Node: &client.Node{Value: "on"}}, nil)
 	loader := &Loader{config: Configuration{Tag: "webapp"}, registry: registry}
 
@@ -230,7 +228,7 @@ func TestHasServiceChangedSetPreviousNonService(t *testing.T) {
 }
 
 func TestHasServiceChangedSetPreviousServiceToNonService(t *testing.T) {
-	registry := &mocks.Registry{}
+	registry := newMockConfigRegistry(t)
 	registry.On("Get", mock.Anything).Return(&client.Response{Node: &client.Node{Value: "on"}}, nil)
 	loader := &Loader{config: Configuration{Tag: "webapp"}, registry: registry}
 	node := client.Node{

@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/cloudogu/ces-confd/confd"
-	"github.com/cloudogu/ces-confd/confd/registry"
 	"github.com/pkg/errors"
 )
 
@@ -18,7 +17,7 @@ type doguEntry struct {
 	Tags        []string
 }
 
-func readAndUnmarshalDogu(registry registry.Registry, key string, tag string) (EntryWithCategory, error) {
+func readAndUnmarshalDogu(registry configRegistry, key string, tag string) (EntryWithCategory, error) {
 	doguBytes, err := readDoguAsBytes(registry, key)
 	if err != nil {
 		return EntryWithCategory{}, err
@@ -37,7 +36,7 @@ func readAndUnmarshalDogu(registry registry.Registry, key string, tag string) (E
 	return EntryWithCategory{}, nil
 }
 
-func readDoguAsBytes(registry registry.Registry, key string) ([]byte, error) {
+func readDoguAsBytes(registry configRegistry, key string) ([]byte, error) {
 	resp, err := registry.Get(key + "/current")
 	if err != nil {
 		// the dogu seems to be unregistered

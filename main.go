@@ -15,8 +15,8 @@ import (
 	"github.com/cloudogu/ces-confd/confd/service"
 	"github.com/cloudogu/ces-confd/confd/warp"
 	"github.com/codegangsta/cli"
-	"github.com/coreos/etcd/client"
 	"github.com/pkg/errors"
+	"go.etcd.io/etcd/client/v2"
 )
 
 var (
