@@ -5,13 +5,17 @@ import (
 	"log"
 
 	"github.com/cloudogu/ces-confd/confd"
-	configRegistry "github.com/cloudogu/ces-confd/confd/registry"
-	"github.com/coreos/etcd/client"
 	"github.com/pkg/errors"
+	"go.etcd.io/etcd/client/v2"
 )
 
+type configRegistry interface {
+	Get(key string) (*client.Response, error)
+	Watch(key string, recursive bool, eventChannel chan *client.Response)
+}
+
 type Loader struct {
-	registry configRegistry.Registry
+	registry configRegistry
 	config   Configuration
 	writer   Writer
 }
