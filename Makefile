@@ -22,5 +22,3 @@ include build/make/release.mk
 include build/make/package-tar.mk
 include build/make/digital-signature.mk
 include build/make/mocks.mk
-include build/make/trivyscan.mk
-
