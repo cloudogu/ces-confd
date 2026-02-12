@@ -2,7 +2,7 @@
 ARTIFACT_ID=ces-confd
 VERSION=0.11.0
 
-MAKEFILES_VERSION=9.5.3
+MAKEFILES_VERSION=10.6.0
 GOTAG=1.25.7
 
 .DEFAULT_GOAL:=compile
@@ -22,3 +22,5 @@ include build/make/release.mk
 include build/make/package-tar.mk
 include build/make/digital-signature.mk
 include build/make/mocks.mk
+include build/make/trivyscan.mk
+
