@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v0.12.0] - 2026-02-13
+### Changed
+- [#38] Update Makefiles to 10.6.0
+### Security
+- [#38] Fix Go stdlib CVE-2025-68121
+
 ## [v0.11.0] - 2025-01-27
 ### Changed
 - Upgrade go-version to v1.23.5 to fix CVEs in v1.17.13 which no longer receives updates (#36)

@@ -1,5 +1,5 @@
 #!groovy
-@Library(['github.com/cloudogu/ces-build-lib@4.0.1'])
+@Library(['github.com/cloudogu/ces-build-lib@4.3.0'])
 import com.cloudogu.ces.cesbuildlib.*
 
 node('docker') {
@@ -19,7 +19,7 @@ node('docker') {
     projectPath = "/go/src/github.com/${repositoryOwner}/${projectName}/"
     githubCredentialsId = 'sonarqube-gh'
 
-    goVersion= "1.23.5"
+    goVersion= "1.25.7"
 
 
     stage('Checkout') {
