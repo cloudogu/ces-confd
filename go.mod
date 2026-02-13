@@ -1,6 +1,6 @@
 module github.com/cloudogu/ces-confd
 
-go 1.23.5
+go 1.25.7
 
 require (
 	github.com/codegangsta/cli v1.18.1-0.20160716161136-11c134509d89
